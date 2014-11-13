@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android" id="me.lockate.plugins.pinnedhttps" version="0.1.0">
+	<name>Pinned HTTPS request</name>
+	<description>
+		This plugin allows you to make a certificate check before sending an HTTPS request (on the same connection) in order to dodge MITM attacks. For iOS and Android
+	</description>
+
+	<license>MIT</license>
+	<keywords>security,https,ceritifcate,fingerprint</keywords>
+	<engines>
+		<engine name="cordova" version=">=3.0.0" />
+	</engines>
+
+	<js-module name="PinnedHTTPS" src="www/PinnedHTTPS.js">
+		<clobbers target="window.plugins.pinnedhttps"/>
+	</js-module>
+
+	<!--iOS plugin-->
+	<platform name="ios">
+		<config-file target="config.xml" parent="/*">
+			<feature name="PinnedHTTPS">
+				<param name="ios-package" value="PinnedHTTPS"/>
+			</feature>
+		</config-file>
+		<header-file src="src/ios/PinnedHTTPS.h"/>
+		<source-file src="src/ios/PinnedHTTPS.m"/>
+		<framework src="Security.framework"/>
+	</platform>
+
+	<!--Android plugin-->
+	<platform name="android">
+		<config-file targer="res/xml/config.xml" parent="/*">
+			<feature name="PinnedHTTPS">
+				<param name="android-package" value="me.lockate.plugins.pinnedhttps" />
+			</feature>
+		</config-file>
+		<source-file src="src/android/me/lockate/plugins/PinnedHTTPS.java" target-dir="src/me/lockate/plugins"/>
+	</platform>
+
+</plugin>
