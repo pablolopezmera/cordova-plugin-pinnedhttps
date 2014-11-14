@@ -35,7 +35,7 @@ public class PinnedHTTP extends CordovaPlugin {
 					final String fingerprint = args.getString(1); //Expected fingerprint
 					final URL getUrl = new URL(getUrlStr);
 					final String hostname = getUrl.getHost(); //Getting hostname from URL
-					HttpsURLConnection conn = new HttpsURLConnection(new URL(getUrl));
+					HttpsURLConnection conn = new HttpsURLConnection(getUrl);
 					//Setting up the fingerprint verification upon session negotiation
 					conn.setUseCaches(false);
 					conn.setDefaultHostnameVerifier(new HostnameVerifier(){
@@ -69,15 +69,66 @@ public class PinnedHTTP extends CordovaPlugin {
 			return true;
 		} else if (method.equals("req")){
 			//Arbitrary HTTP request (any verb)
+			cordova.getThreadPool().execute(new Runnable(){
+				public void run(){
+					final JSONObject reqOptions = JSONObject(args.getString(0));
+					final String fingerprint = args.getString(1);
+					final String hostname = reqOptions.getString("host");
+					final URL reqUrl("https://" + hostname + ":" + reqOptions.getString("port") + reqOptions.getString("path"));
+					HttpsURLConnection conn = new HttpsURLConnection(reqUrl);
+
+					//Append headers, if any
+					if (reqOptions.has("headers")){
+						JSONObject headers;
+						try {
+							headers = reqOptions.getJSONObject("headers");
+						} catch (JSONException e){
+							callbackContext.error("Invalid options.headers");
+							return;
+						}
+						JSONArray headersNames = headers.names();
+						for (int i = 0; i < headersNames.length(); i++){
+							String currentHeaderName = headersNames.getString(i);
+							conn.addRequestProperty(currentHeaderName, headers.getString(currentHeaderName));
+						}
+					}
+
+					conn.setRequestMethod(reqOptions.getString("method"));
+					conn.setUseCaches(false);
+					conn.setDefaultHostnameVerifier(new HostnameVerifier(){
+						public boolean verify(String connectedHostname, SSLSession sslSession){
+							if (!connectedHostname.equals(hostname)){
+								return false;
+							}
+							final Certificate serverCert = sslSession.getPeerCertificates()[0];
+							final MessageDigest md = MessageDigest.getInstance("SHA1");
+							md.update(serverCert.getEncoded());
+							return dumpHex(md.digest()).equals(removeSpaces(fingerprint.toUpperCase()));
+						}
+					});
+					//Open connection and process request
+					conn.connect();
+					int httpStatusCode = conn.getResponseCode();
+					Map<String, List<String>> responseHeaders = conn.getHeaderFields();
+					BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+					String reponse = "";
+					int c;
+					while ((c = reader.read()) != -1){
+						response += (char) c;
+					}
+					reader.close();
+					conn.disconnect();
+
+					JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders)
+					callbackContext.success(responseObj);
+				}
+			});
+			return true;
 		} else {
 			callbackContext.error("Invalid method. Did you mean \"get()\" or \"req()\"?");
 			return false;
 		}
 	}
-
-	/*private static boolean CheckFingerprint (HttpsUrlConnection conn, final String fingerprint) throws IOException, NoSuchAlgorithmException, CertificateException, CertificateEncodingException {
-
-	}*/
 
 	private static JSONObject buildResponseJson (final int responseCode, final String responseBody, Map<String, List<String>> responseHeaders) throws JSONException {
 		JSONObject responseObj;
