@@ -1,10 +1,13 @@
 package me.lockate.plugins;
 
-import org.json.Array;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.json.JSONException;
 
 import java.util.Map;
 import java.util.List;
+import java.util.Set;
+import java.util.Iterator;
 
 import java.io.IOException;
 import java.io.BufferedReader;
@@ -58,12 +61,17 @@ public class PinnedHTTP extends CordovaPlugin {
 					}
 					reader.close();
 					conn.disconnect();
+
+					JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders)
+					callbackContext.success(responseObj);
 				}
 			});
+			return true;
 		} else if (method.equals("req")){
 			//Arbitrary HTTP request (any verb)
 		} else {
-
+			callbackContext.error("Invalid method. Did you mean \"get()\" or \"req()\"?");
+			return false;
 		}
 	}
 
@@ -71,8 +79,23 @@ public class PinnedHTTP extends CordovaPlugin {
 
 	}*/
 
-	private static String buildResponseJson (final int responseCode, final String responseBody, Map<String, List<String>> responseHeaders) throws JSONException {
+	private static JSONObject buildResponseJson (final int responseCode, final String responseBody, Map<String, List<String>> responseHeaders) throws JSONException {
+		JSONObject responseObj;
+		responseObj.put("statusCode", responseCode);
+		responseObj.put("body", responseBody);
 
+		JSONObject headersObj;
+		Set<Map.Entry<String, List<String>>> headersEntries = responseHeaders.entrySet();
+		Iterator<Map.Entry<String, List<String>>> headersIterator = headersEntries.iterator();
+		while (headersIterator.hasNext()){
+			Map.Entry<String, List<String>> currentHeader = headersIterator.next();
+			//Skip header field if values are empty
+			if (currentHeader.getValue().size() == 0) continue;
+			//Getting first values of header
+			headersObj.put(currentHeader.getKey(), currentHeader.getValue().get(0));
+		}
+		responseObj.put("headers", headersObj);
+		return responseObj;
 	}
 
 	private static String dumpHex(byte[] data){ //To hex. No spacing between bytes
