@@ -2,13 +2,14 @@
 var exec = require('cordova/exec');
 
 function PinnedHTTPS(expectedFingerprint){
+	this.fingerprint = expectedFingerprint;
 }
 
 PinnedHTTPS.prototype.get = function(url, callback){
 	if (typeof url != 'string') throw new TypeError('url must be a string');
 	if (typeof callback != 'function') throw new TypeError('callback must be a function');
 
-	cordova.exec(responseHandler, errorHandler, 'get', [url, expectedFingerprint]);
+	cordova.exec(responseHandler, errorHandler, 'get', [url, this.fingerprint]);
 
 	function responseHandler(responseObj){
 		callback(null, responseObj);
@@ -39,7 +40,7 @@ PinnedHTTPS.prototype.request = function(options, callback){
 		}
 	}
 
-	cordova.exec(responseHandler, errorHandler, 'req', [JSON.strinify(options), expectedFingerprint]);
+	cordova.exec(responseHandler, errorHandler, 'req', [JSON.strinify(options), this.fingerprint]);
 
 	function responseHandler(responseObj){
 		callback(null, responseObj);
