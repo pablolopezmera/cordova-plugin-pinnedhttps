@@ -40,7 +40,7 @@ PinnedHTTPS.prototype.request = function(options, callback){
 		}
 	}
 
-	cordova.exec(responseHandler, errorHandler, 'req', [JSON.strinify(options), this.fingerprint]);
+	cordova.exec(responseHandler, errorHandler, 'req', [JSON.stringify(options), this.fingerprint]);
 
 	function responseHandler(responseObj){
 		callback(null, responseObj);
