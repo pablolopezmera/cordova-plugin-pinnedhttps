@@ -2,7 +2,10 @@
 var exec = require('cordova/exec');
 
 function PinnedHTTPS(expectedFingerprint){
-	this.fingerprint = expectedFingerprint;
+	if (typeof expectedFingerprint != 'string') throw new TypeError('expectedFingerprint must be a string');
+	expectedFingerprint = expectedFingerprint.trim().replace(' ', '').toLowerCase();
+	if (!isSHA1(expectedFingerprint)) throw new TypeError('invalid expectedFingerprint. Must be an SHA1 fingerprint');
+	this.fingerprint = expectedFingerprint
 }
 
 PinnedHTTPS.prototype.get = function(url, callback){
@@ -51,3 +54,7 @@ PinnedHTTPS.prototype.request = function(options, callback){
 }
 
 module.exports.PinnedHTTPS = PinnedHTTPS;
+
+function isSHA1(s){
+	return (typeof s == 'string' && s.length == 40 && /^([a-f]|[0-9])+$/i.test(s));
+}
