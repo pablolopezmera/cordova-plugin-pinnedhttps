@@ -74,7 +74,7 @@ public class PinnedHTTP extends CordovaPlugin {
 					final JSONObject reqOptions = JSONObject(args.getString(0));
 					final String fingerprint = args.getString(1);
 					final String hostname = reqOptions.getString("host");
-					final URL reqUrl("https://" + hostname + ":" + reqOptions.getString("port") + reqOptions.getString("path"));
+					final URL reqUrl = initURL("https://" + hostname + ":" + reqOptions.getString("port") + reqOptions.getString("path"));
 					HttpsURLConnection conn = new HttpsURLConnection(reqUrl);
 
 					//Append headers, if any
@@ -119,7 +119,7 @@ public class PinnedHTTP extends CordovaPlugin {
 					reader.close();
 					conn.disconnect();
 
-					JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders)
+					JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders);
 					callbackContext.success(responseObj);
 				}
 			});
@@ -161,5 +161,13 @@ public class PinnedHTTP extends CordovaPlugin {
 
 	private static String removeSpaces(String s){
 		return s.replace(" ", "");
+	}
+
+	private static URL initURL(String s){
+		try {
+			return new URL(s);
+		} catch (Exception e){
+			return null;
+		}
 	}
 }

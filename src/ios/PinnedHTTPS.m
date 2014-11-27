@@ -85,7 +85,7 @@
 @interface PinnedHTTPS ()
 
 @property (strong, nonatomic) NSString *_callbackId;
-@property (strong, nonatomic) NSMutableData *_connections;
+//@property (strong, nonatomic) NSMutableData *_connections;
 
 @end
 
@@ -161,8 +161,8 @@
 		}
     }
 
-    CustomURLConnectionDelegate *delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin:self callback: command.callbackId fingerprint: expectedFingerprint];
-    NSURLConnection *connection = [NSURLConnection connectionWithRequest: req delegate: delegate];
+    CustomURLConnectionDelegate* delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin: self callback: command.callbackId fingerprint: expectedFingerprint];
+    NSURLConnection *connection = [[NSURLConnection alloc] connectionWithRequest: req delegate: delegate];
 
     if(!connection){
         CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_ERROR messageAsString:@"Connection error"];
