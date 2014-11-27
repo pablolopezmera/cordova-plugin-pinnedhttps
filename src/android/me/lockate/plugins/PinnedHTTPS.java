@@ -24,6 +24,8 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
 import java.net.URL;
+import java.net.MalformedURLException;
+import java.net.SocketTimeoutException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
@@ -40,39 +42,92 @@ public class PinnedHTTPS extends CordovaPlugin {
 			//Standard HTTPS GET request. Running in a new thread
 			cordova.getThreadPool().execute(new Runnable(){
 				public void run(){
-					final String getUrlStr = args.getString(0); //Request URL
-					final String fingerprint = args.getString(1); //Expected fingerprint
-					final URL getUrl = new URL(getUrlStr);
-					final String hostname = getUrl.getHost(); //Getting hostname from URL
-					HttpsURLConnection conn = (HttpsURLConnection) getUrl.openConnection();
-					//Setting up the fingerprint verification upon session negotiation
-					conn.setUseCaches(false);
-					conn.setDefaultHostnameVerifier(new HostnameVerifier(){
-						public boolean verify(String connectedHostname, SSLSession sslSession){
-							if (!connectedHostname.equals(hostname)){
-								return false;
-							}
-							final Certificate serverCert = sslSession.getPeerCertificates()[0]; //Getting the servers own certificate
-							final MessageDigest md = MessageDigest.getInstance("SHA1"); //Instanciating SHA1
-							md.update(serverCert.getEncoded());
-							return dumpHex(md.digest()).equals(removeSpaces(fingerprint.toUpperCase())); //Fingerprint check, in itself
-						}
-					});
-					//Open connection and process request
-					conn.connect();
-					int httpStatusCode = conn.getResponseCode();
-					Map<String, List<String>> responseHeaders = conn.getHeaderFields();
-					BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-					String response = "";
-					int c;
-					while ((c = reader.read()) != -1){
-						response += (char) c;
+					String getUrlStr; //Request URL
+					String fingerprint; //Expected fingerprint
+					try {
+						getUrlStr = args.getString(0);
+						fingerprint = args.getString(1);
+					} catch (JSONException e){
+						callbackContext.error("Invalid method parameters");
+						return;
 					}
-					reader.close();
-					conn.disconnect();
+					URL getUrl;
+					try {
+						getUrl = new URL(getUrlStr);
+					} catch (MalformedURLException e){
+						callbackContext.error("Invalid URL format");
+						return;
+					}
+					final String hostname = getUrl.getHost(); //Getting hostname from URL
+					HttpsURLConnection conn;
+					try {
+						conn = (HttpsURLConnection) getUrl.openConnection();
+					} catch (IOException e){
+						callbackContext.error("Cannot connect to " + getUrlStr);
+						return;
+					}
+					//Setting up the fingerprint verification upon session negotiation
+					try {
+						conn.setUseCaches(false);
+						final String f_hostname = hostname;
+						final String f_fingerprint = fingerprint;
+						conn.setDefaultHostnameVerifier(new HostnameVerifier(){
+							public boolean verify(String connectedHostname, SSLSession sslSession){
+								if (!connectedHostname.equals(f_hostname)){
+									return false;
+								}
 
-					JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders);
-					callbackContext.success(responseObj);
+								Certificate serverCert;
+								MessageDigest md;
+								try {
+									serverCert = sslSession.getPeerCertificates()[0]; //Getting the servers own certificate
+									md = MessageDigest.getInstance("SHA1"); //Instanciating SHA1
+									md.update(serverCert.getEncoded());
+								} catch (SSLPeerUnverifiedException e){
+									callbackContext.error("Peer ceritifcate error. Cannot check identity. Kiling the connection");
+									return false;
+								} catch (NoSuchAlgorithmException e){
+									callbackContext.error("Missing SHA1 support!. Killing the connection. Please update Android");
+									return false;
+								} catch (CertificateEncodingException e){
+									callbackContext.error("Bad certificate encoding");
+									return false;
+								}
+								return dumpHex(md.digest()).equals(removeSpaces(f_fingerprint.toUpperCase())); //Fingerprint check, in itself
+							}
+						});
+					} catch (Exception e){
+						callbackContext.error("Error while setting up the conneciton");
+						return;
+					}
+					//Open connection and process request
+					try {
+						conn.connect();
+					} catch (SocketTimeoutException e){
+						callbackContext.error("Cannot connect to " + getUrlStr + " (timeout)");
+						return;
+					} catch (IOException e){
+						callbackContext.error("Cannot connect to " + getUrlStr);
+						return;
+					}
+					try {
+						int httpStatusCode = conn.getResponseCode();
+						Map<String, List<String>> responseHeaders = conn.getHeaderFields();
+						BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+						String response = "";
+						int c;
+						while ((c = reader.read()) != -1){
+							response += (char) c;
+						}
+						reader.close();
+						conn.disconnect();
+
+						JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders);
+						if (responseObj == null) callbackContext.error("Error while building response object");
+						else callbackContext.success(responseObj);
+					} catch (Exception e){
+						callbackContext.error("Request failed");
+					}
 				}
 			});
 			return true;
@@ -80,11 +135,27 @@ public class PinnedHTTPS extends CordovaPlugin {
 			//Arbitrary HTTP request (any verb)
 			cordova.getThreadPool().execute(new Runnable(){
 				public void run(){
-					final JSONObject reqOptions = new JSONObject(args.getString(0));
-					final String fingerprint = args.getString(1);
-					final String hostname = reqOptions.getString("host");
-					final URL reqUrl = initURL("https://" + hostname + ":" + reqOptions.getString("port") + reqOptions.getString("path"));
-					HttpsURLConnection conn = (HttpsURLConnection) reqUrl.openConnection();
+					JSONObject reqOptions;
+					String fingerprint, hostname, port, path;
+					try {
+						reqOptions = new JSONObject(args.getString(0));
+						fingerprint = args.getString(1);
+						hostname = reqOptions.getString("host");
+						port = reqOptions.getString("port");
+						path = reqOptions.getString("path");
+					} catch (JSONException e){
+						callbackContext.error("Invalid parameters format");
+						return;
+					}
+					String reqUrlStr = "https://" + hostname + ":" + port + path;
+					URL reqUrl = initURL(reqUrlStr);
+					HttpsURLConnection conn;
+					try {
+						conn = (HttpsURLConnection) reqUrl.openConnection();
+					} catch (IOException e){
+						callbackContext.error("Cannot connect to " + reqUrlStr);
+						return;
+					}
 
 					//Append headers, if any
 					if (reqOptions.has("headers")){
@@ -95,41 +166,80 @@ public class PinnedHTTPS extends CordovaPlugin {
 							callbackContext.error("Invalid options.headers");
 							return;
 						}
-						JSONArray headersNames = headers.names();
-						for (int i = 0; i < headersNames.length(); i++){
-							String currentHeaderName = headersNames.getString(i);
-							conn.addRequestProperty(currentHeaderName, headers.getString(currentHeaderName));
-						}
-					}
-
-					conn.setRequestMethod(reqOptions.getString("method"));
-					conn.setUseCaches(false);
-					conn.setDefaultHostnameVerifier(new HostnameVerifier(){
-						public boolean verify(String connectedHostname, SSLSession sslSession){
-							if (!connectedHostname.equals(hostname)){
-								return false;
+						try {
+							JSONArray headersNames = headers.names();
+							for (int i = 0; i < headersNames.length(); i++){
+								String currentHeaderName = headersNames.getString(i);
+								conn.addRequestProperty(currentHeaderName, headers.getString(currentHeaderName));
 							}
-							final Certificate serverCert = sslSession.getPeerCertificates()[0];
-							final MessageDigest md = MessageDigest.getInstance("SHA1");
-							md.update(serverCert.getEncoded());
-							return dumpHex(md.digest()).equals(removeSpaces(fingerprint.toUpperCase()));
+						} catch (Exception e){
+							callbackContext.error("Error while appending headers to request");
+							return;
 						}
-					});
-					//Open connection and process request
-					conn.connect();
-					int httpStatusCode = conn.getResponseCode();
-					Map<String, List<String>> responseHeaders = conn.getHeaderFields();
-					BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-					String response = "";
-					int c;
-					while ((c = reader.read()) != -1){
-						response += (char) c;
 					}
-					reader.close();
-					conn.disconnect();
 
-					JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders);
-					callbackContext.success(responseObj);
+					try {
+						conn.setRequestMethod(reqOptions.getString("method"));
+						conn.setUseCaches(false);
+						final String f_hostname = hostname;
+						final String f_fingerprint = fingerprint;
+						conn.setDefaultHostnameVerifier(new HostnameVerifier(){
+							public boolean verify(String connectedHostname, SSLSession sslSession){
+								if (!connectedHostname.equals(f_hostname)){
+									return false;
+								}
+
+								Certificate serverCert;
+								MessageDigest md;
+								try {
+									serverCert = sslSession.getPeerCertificates()[0]; //Getting the servers own certificate
+									md = MessageDigest.getInstance("SHA1"); //Instanciating SHA1
+									md.update(serverCert.getEncoded());
+								} catch (SSLPeerUnverifiedException e){
+									callbackContext.error("Peer ceritifcate error. Cannot check identity. Kiling the connection");
+									return false;
+								} catch (NoSuchAlgorithmException e){
+									callbackContext.error("Missing SHA1 support!. Killing the connection. Please update Android");
+									return false;
+								} catch (CertificateEncodingException e){
+									callbackContext.error("Bad certificate encoding");
+									return false;
+								}
+								return dumpHex(md.digest()).equals(removeSpaces(f_fingerprint.toUpperCase())); //Fingerprint check, in itself
+							}
+						});
+					} catch (Exception e){
+						callbackContext.error("Error while setting up the connection");
+						return;
+					}
+					//Open connection and process request
+					try {
+						conn.connect();
+					} catch (SocketTimeoutException e){
+						callbackContext.error("Cannot connect to " + reqUrlStr + " (timeout)");
+						return;
+					} catch (IOException e){
+						callbackContext.error("Cannot connect to " + reqUrlStr);
+						return;
+					}
+					try {
+						int httpStatusCode = conn.getResponseCode();
+						Map<String, List<String>> responseHeaders = conn.getHeaderFields();
+						BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+						String response = "";
+						int c;
+						while ((c = reader.read()) != -1){
+							response += (char) c;
+						}
+						reader.close();
+						conn.disconnect();
+
+						JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders);
+						if (responseObj == null) callbackContext.error("Cannot build reponse");
+						else callbackContext.success(responseObj);
+					} catch (Exception e){
+						callbackContext.error("Error while building response object");
+					}
 				}
 			});
 			return true;
@@ -139,22 +249,26 @@ public class PinnedHTTPS extends CordovaPlugin {
 		}
 	}
 
-	private static JSONObject buildResponseJson (final int responseCode, final String responseBody, Map<String, List<String>> responseHeaders) throws JSONException {
-		JSONObject responseObj;
-		responseObj.put("statusCode", responseCode);
-		responseObj.put("body", responseBody);
+	private static JSONObject buildResponseJson (final int responseCode, final String responseBody, Map<String, List<String>> responseHeaders){
+		JSONObject responseObj = new JSONObject();
+		try {
+			responseObj.put("statusCode", responseCode);
+			responseObj.put("body", responseBody);
 
-		JSONObject headersObj;
-		Set<Map.Entry<String, List<String>>> headersEntries = responseHeaders.entrySet();
-		Iterator<Map.Entry<String, List<String>>> headersIterator = headersEntries.iterator();
-		while (headersIterator.hasNext()){
-			Map.Entry<String, List<String>> currentHeader = headersIterator.next();
-			//Skip header field if values are empty
-			if (currentHeader.getValue().size() == 0) continue;
-			//Getting first values of header
-			headersObj.put(currentHeader.getKey(), currentHeader.getValue().get(0));
+			JSONObject headersObj = new JSONObject();
+			Set<Map.Entry<String, List<String>>> headersEntries = responseHeaders.entrySet();
+			Iterator<Map.Entry<String, List<String>>> headersIterator = headersEntries.iterator();
+			while (headersIterator.hasNext()){
+				Map.Entry<String, List<String>> currentHeader = headersIterator.next();
+				//Skip header field if values are empty
+				if (currentHeader.getValue().size() == 0) continue;
+				//Getting first values of header
+				headersObj.put(currentHeader.getKey(), currentHeader.getValue().get(0));
+			}
+			responseObj.put("headers", headersObj);
+		} catch (JSONException e){
+			return null;
 		}
-		responseObj.put("headers", headersObj);
 		return responseObj;
 	}
 
