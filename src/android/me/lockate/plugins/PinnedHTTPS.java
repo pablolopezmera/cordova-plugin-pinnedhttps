@@ -23,7 +23,7 @@ import java.security.cert.CertificateEncodingException;
 
 public class PinnedHTTP extends CordovaPlugin {
 
-	private static char[] HEX_CHARS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
+	private static char[] HEX_CHARS = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
 	@Override
 	public boolean execute(final String method, final JSONArray args, final CallbackContext callbackContext) throws JSONException, IOException, NoSuchAlgorithmException, CertificateException, CertificateEncodingException {

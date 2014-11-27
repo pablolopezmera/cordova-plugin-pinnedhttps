@@ -30,7 +30,7 @@
 	return self;
 }
 
-- (void)connection: (NSURLConnection*)connection willSendRequestForAuthenticationChallenge: (NSURLAuthenticationChallenge*)challange
+- (void)connection: (NSURLConnection*)connection willSendRequestForAuthenticationChallenge: (NSURLAuthenticationChallenge*)challenge
 {
 	NSString* connFingerprint = [self getFingerprint: SecTrustGetCertificateAtIndex(challenge.protectionSpace.serverTrust, 0)];
 
@@ -43,8 +43,8 @@
 }
 
 - (void)connection: (NSURLConnection*)connection didFailWithError: (NSError*)error {
-	[self._responseBody release];
-	[connection release];
+	//[self._responseBody release];
+	//[connection release];
     NSString *resultCode = @"Connection error. Details:";
     NSString *errStr = [NSString stringWithFormat:@"%@ %@", resultCode, [error localizedDescription]];
     CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:errStr];
@@ -53,7 +53,7 @@
 
 - (void)connection: (NSURLConnection*)connection didRecieveResponse:(NSURLResponse*)res{
     NSHTTPURLResponse *httpRes = (NSHTTPURLResponse*) res;
-    self._responseObj = [NSMutableDictionary initWithDictionary:@{@"statusCode": res.statusCode,@"headers": res.allHeaderFields}];
+    self._responseObj = [NSMutableDictionary initWithDictionary:@{@"statusCode": httpRes.statusCode, @"headers": httpRes.allHeaderFields}];
 }
 
 - (void)connection: (NSURLConnection*)connection didReceiveData:(NSData *)data{
@@ -64,9 +64,9 @@
     //Append response body and pass to JS
     NSString *responseBodyStr = [[NSString alloc] initWithData: self._responseBody encoding: NSUTF8StringEncoding];
     [self._responseObj setObject: responseBodyStr forKey: @"body"];
-    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_SUCCESS messageAsDictionary: self._responseObj];
+    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary: self._responseObj];
     [self._plugin writeJavascript: [pluginResult toSuccessCallbackString:self._callbackId]];
-    [responseBodyStr release];
+    //[responseBodyStr release];
 }
 
 - (NSString*)getFingerprint: (SecCertificateRef) cert{
@@ -112,13 +112,13 @@
     NSData *jsonData = [optionsJsonStr dataUsingEncoding:NSUTF8StringEncoding];
     NSError *jsonErr = nil;
     NSDictionary *options = [NSJSONSerialization JSONObjectWithData:jsonData options:nil error:&jsonErr];
-    
+
     if (jsonErr != nil){
         CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString:@"invalid JSON for options object"];
         [self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
         return;
     }
-    
+
     NSString *method = [options objectForKey:@"method"];
     if (!([method isEqual:@"get"] || [method isEqual:@"post"] || [method isEqual:@"delete"] || [method isEqual:@"put"] || [method isEqual:@"head"] || [method isEqual:@"options"] || [method isEqual:@"patch"] || [method isEqual:@"trace"] || [method isEqual:@"connect"])){
         CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_ERROR messageAsString:@"Invalid HTTP method"];
@@ -128,7 +128,7 @@
     NSURL *reqUrl = [NSURL URLWithString: [NSString stringWithFormat:@"https://%@:%@%@", [options objectForKey:@"host"], [options objectForKey:@"port"], [options objectForKey:@"path"]]];
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:reqUrl cachePolicy: NSURLCacheStorageNotAllowed timeoutInterval: 20.0];
     req.HTTPMethod = [method uppercaseString];
-    
+
     NSDictionary *headers = [options objectForKey:@"headers"];
     if (headers != nil){
         NSArray *headersList = headers.allKeys;
@@ -138,7 +138,7 @@
             i++;
         }
     }
-    
+
     //What to do with the request body?
     NSObject *reqBody = [options objectForKey:@"body"];
     if (reqBody == nil){
@@ -147,13 +147,13 @@
     if ([reqBody isKindOfClass: [NSString class]]){
         //Append to request and send out
         NSData *reqData = [(NSString*) reqBody dataUsingEncoding:NSUTF8StringEncoding];
-        [req setValue:[NSString stringWithFormat:@"%d" [reqData length]] forHTTPHeaderField:@"Content-Length"];
+        [req setValue:[NSString stringWithFormat:@"%d" reqData.length] forHTTPHeaderField:@"Content-Length"];
         [req setHTTPBody: reqData];
     } else if ([reqBody isKindOfClass: [NSDictionary class]]){
         //To JSON, append to request and send out
         NSError *stringifyErr = nil;
         NSData *reqData = [NSJSONSerialization dataWithJSONObject: (NSDictionary*) reqBody options:nil error:&stringifyErr];
-        [req setValue: [NSString stringWithFormat:@"%d" [reqData length]] forHTTPHeaderField:@"Content-Length"];
+        [req setValue: [NSString stringWithFormat:@"%d" reqData length] forHTTPHeaderField:@"Content-Length"];
         [req setValue: @"application/json" forHTTPHeaderField:@"Content-Type"];
         [req setHTTPBody: reqData];
     } else {
@@ -161,11 +161,11 @@
         [self writeJavascript: [rslt toErrorCallbackString:command.callbackId]];
         return;
     }
-    
+
 sendReq:
     CustomURLConnectionDelegate *delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin:self callback: command.callbackId fingerprint: expectedFingerprint];
     NSURLConnection *connection = [NSURLConnection connectionWithRequest: req delegate: delegate];
-    
+
     if(!connection){
         CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_ERROR messageAsString:@"Connection error"];
         [self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
