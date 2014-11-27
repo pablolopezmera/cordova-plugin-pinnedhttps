@@ -53,7 +53,7 @@
 
 - (void)connection: (NSURLConnection*)connection didRecieveResponse:(NSURLResponse*)res{
     NSHTTPURLResponse *httpRes = (NSHTTPURLResponse*) res;
-    self._responseObj = [NSMutableDictionary initWithDictionary:@{@"statusCode": httpRes.statusCode, @"headers": httpRes.allHeaderFields}];
+    self._responseObj = [NSMutableDictionary initWithDictionary:@{@"statusCode": [NSNumber numberWithInt:httpRes.statusCode, @"headers": httpRes.allHeaderFields}];
 }
 
 - (void)connection: (NSURLConnection*)connection didReceiveData:(NSData *)data{
@@ -141,28 +141,26 @@
 
     //What to do with the request body?
     NSObject *reqBody = [options objectForKey:@"body"];
-    if (reqBody == nil){
-        goto sendReq;
-    }
-    if ([reqBody isKindOfClass: [NSString class]]){
-        //Append to request and send out
-        NSData *reqData = [(NSString*) reqBody dataUsingEncoding:NSUTF8StringEncoding];
-        [req setValue:[NSString stringWithFormat:@"%d" reqData.length] forHTTPHeaderField:@"Content-Length"];
-        [req setHTTPBody: reqData];
-    } else if ([reqBody isKindOfClass: [NSDictionary class]]){
-        //To JSON, append to request and send out
-        NSError *stringifyErr = nil;
-        NSData *reqData = [NSJSONSerialization dataWithJSONObject: (NSDictionary*) reqBody options:nil error:&stringifyErr];
-        [req setValue: [NSString stringWithFormat:@"%d" reqData length] forHTTPHeaderField:@"Content-Length"];
-        [req setValue: @"application/json" forHTTPHeaderField:@"Content-Type"];
-        [req setHTTPBody: reqData];
-    } else {
-        CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString:@"Invalid request body format"];
-        [self writeJavascript: [rslt toErrorCallbackString:command.callbackId]];
-        return;
+    if (reqBody != nil){
+		if ([reqBody isKindOfClass: [NSString class]]){
+			//Append to request and send out
+			NSData *reqData = [(NSString*) reqBody dataUsingEncoding:NSUTF8StringEncoding];
+			[req setValue:[NSString stringWithFormat:@"%d", reqData.length] forHTTPHeaderField:@"Content-Length"];
+			[req setHTTPBody: reqData];
+		} else if ([reqBody isKindOfClass: [NSDictionary class]]){
+			//To JSON, append to request and send out
+			NSError *stringifyErr = nil;
+			NSData *reqData = [NSJSONSerialization dataWithJSONObject: (NSDictionary*) reqBody options:nil error:&stringifyErr];
+			[req setValue: [NSString stringWithFormat:@"%d", reqData.length] forHTTPHeaderField:@"Content-Length"];
+			[req setValue: @"application/json" forHTTPHeaderField:@"Content-Type"];
+			[req setHTTPBody: reqData];
+		} else {
+			CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString:@"Invalid request body format"];
+			[self writeJavascript: [rslt toErrorCallbackString:command.callbackId]];
+			return;
+		}
     }
 
-sendReq:
     CustomURLConnectionDelegate *delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin:self callback: command.callbackId fingerprint: expectedFingerprint];
     NSURLConnection *connection = [NSURLConnection connectionWithRequest: req delegate: delegate];
 

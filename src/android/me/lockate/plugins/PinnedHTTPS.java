@@ -44,7 +44,7 @@ public class PinnedHTTP extends CordovaPlugin {
 								return false;
 							}
 							final Certificate serverCert = sslSession.getPeerCertificates()[0]; //Getting the servers own certificate
-							final MessageDigest md = MessageDigest.getInstance('SHA1'); //Instanciating SHA1
+							final MessageDigest md = MessageDigest.getInstance("SHA1"); //Instanciating SHA1
 							md.update(serverCert.getEncoded());
 							return dumpHex(md.digest()).equals(removeSpaces(fingerprint.toUpperCase())); //Fingerprint check, in itself
 						}
@@ -62,7 +62,7 @@ public class PinnedHTTP extends CordovaPlugin {
 					reader.close();
 					conn.disconnect();
 
-					JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders)
+					JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders);
 					callbackContext.success(responseObj);
 				}
 			});
