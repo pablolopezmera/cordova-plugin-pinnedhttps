@@ -19,6 +19,7 @@ import java.io.InputStreamReader;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.net.ssl.SSLSession;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -26,12 +27,12 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateEncodingException;
 
-public class PinnedHTTP extends CordovaPlugin {
+public class PinnedHTTPS extends CordovaPlugin {
 
 	private static char[] HEX_CHARS = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
 	@Override
-	public boolean execute(final String method, final JSONArray args, final CallbackContext callbackContext) throws JSONException, IOException, NoSuchAlgorithmException, CertificateException, CertificateEncodingException {
+	public boolean execute(final String method, final JSONArray args, final CallbackContext callbackContext) throws JSONException, IOException, NoSuchAlgorithmException, CertificateException{ //, CertificateEncodingException {
 		if (method.equals("get")){
 			//Standard HTTPS GET request. Running in a new thread
 			cordova.getThreadPool().execute(new Runnable(){
