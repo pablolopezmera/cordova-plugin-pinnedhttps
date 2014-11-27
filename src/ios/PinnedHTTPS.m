@@ -53,10 +53,11 @@
 
 - (void)connection: (NSURLConnection*)connection didRecieveResponse:(NSURLResponse*)res{
     NSHTTPURLResponse *httpRes = (NSHTTPURLResponse*) res;
-    self._responseObj = [NSMutableDictionary initWithDictionary:@{@"statusCode": [NSNumber numberWithInt:httpRes.statusCode], @"headers": httpRes.allHeaderFields}];
+    self._responseObj = [NSMutableDictionary dictionaryWithDictionary:@{@"statusCode": [NSNumber numberWithInt:httpRes.statusCode], @"headers": httpRes.allHeaderFields}];
 }
 
 - (void)connection: (NSURLConnection*)connection didReceiveData:(NSData *)data{
+	if (self._responseBody == nil) self._responseBody = [[NSMutableData alloc] init];
 	[self._responseBody appendData: data];
 }
 
@@ -96,7 +97,7 @@
 	NSString *expectedFingerprint = [command.arguments objectAtIndex:1];
 
 	NSURLRequest *req = [NSURLRequest requestWithURL: [NSURL URLWithString: reqUrl] cachePolicy: NSURLCacheStorageNotAllowed timeoutInterval: 20.0];
-	CustomURLConnectionDelegate *delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin:self callback: command.callbackId fingerprint: expectedFingerprint];
+	CustomURLConnectionDelegate *delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin:self callbackId: command.callbackId fingerprint: expectedFingerprint];
 
 	NSURLConnection *connection = [NSURLConnection connectionWithRequest: req delegate: delegate];
 	if (!connection){
@@ -161,8 +162,8 @@
 		}
     }
 
-    CustomURLConnectionDelegate* delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin: self callback: command.callbackId fingerprint: expectedFingerprint];
-    NSURLConnection *connection = [[NSURLConnection alloc] connectionWithRequest: req delegate: delegate];
+    CustomURLConnectionDelegate* delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin: self callbackId: command.callbackId fingerprint: expectedFingerprint];
+    NSURLConnection *connection = [[NSURLConnection alloc] initWithRequest: req delegate: delegate];
 
     if(!connection){
         CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_ERROR messageAsString:@"Connection error"];
