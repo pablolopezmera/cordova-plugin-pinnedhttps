@@ -32,7 +32,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 	private static char[] HEX_CHARS = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
 	@Override
-	public boolean execute(final String method, final JSONArray args, final CallbackContext callbackContext) throws JSONException, IOException, NoSuchAlgorithmException, CertificateException{ //, CertificateEncodingException {
+	public boolean execute(final String method, final JSONArray args, final CallbackContext callbackContext) throws JSONException, IOException, NoSuchAlgorithmException{ //, CertificateException{ //, CertificateEncodingException {
 		if (method.equals("get")){
 			//Standard HTTPS GET request. Running in a new thread
 			cordova.getThreadPool().execute(new Runnable(){
