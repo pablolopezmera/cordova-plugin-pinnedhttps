@@ -53,7 +53,7 @@
 
 - (void)connection: (NSURLConnection*)connection didRecieveResponse:(NSURLResponse*)res{
     NSHTTPURLResponse *httpRes = (NSHTTPURLResponse*) res;
-    self._responseObj = [NSMutableDictionary initWithDictionary:@{@"statusCode": [NSNumber numberWithInt:httpRes.statusCode, @"headers": httpRes.allHeaderFields}];
+    self._responseObj = [NSMutableDictionary initWithDictionary:@{@"statusCode": [NSNumber numberWithInt:httpRes.statusCode], @"headers": httpRes.allHeaderFields}];
 }
 
 - (void)connection: (NSURLConnection*)connection didReceiveData:(NSData *)data{

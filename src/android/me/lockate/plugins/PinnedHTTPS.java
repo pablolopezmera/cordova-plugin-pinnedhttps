@@ -1,5 +1,9 @@
 package me.lockate.plugins;
 
+import org.apache.cordova.CallbackContext;
+import org.apache.cordova.CordovaPlugin;
+import org.apache.cordova.PluginResult;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONException;
@@ -12,13 +16,14 @@ import java.util.Iterator;
 import java.io.IOException;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLPeerUnverifiedException;
-import javax.net.cert.CertificateException;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.security.cert.CertificateEncodingException;
 
 public class PinnedHTTP extends CordovaPlugin {
@@ -35,7 +40,7 @@ public class PinnedHTTP extends CordovaPlugin {
 					final String fingerprint = args.getString(1); //Expected fingerprint
 					final URL getUrl = new URL(getUrlStr);
 					final String hostname = getUrl.getHost(); //Getting hostname from URL
-					HttpsURLConnection conn = new HttpsURLConnection(getUrl);
+					HttpsURLConnection conn = (HttpsURLConnection) getUrl.openConnection();
 					//Setting up the fingerprint verification upon session negotiation
 					conn.setUseCaches(false);
 					conn.setDefaultHostnameVerifier(new HostnameVerifier(){
@@ -54,7 +59,7 @@ public class PinnedHTTP extends CordovaPlugin {
 					int httpStatusCode = conn.getResponseCode();
 					Map<String, List<String>> responseHeaders = conn.getHeaderFields();
 					BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-					String reponse = "";
+					String response = "";
 					int c;
 					while ((c = reader.read()) != -1){
 						response += (char) c;
@@ -71,11 +76,11 @@ public class PinnedHTTP extends CordovaPlugin {
 			//Arbitrary HTTP request (any verb)
 			cordova.getThreadPool().execute(new Runnable(){
 				public void run(){
-					final JSONObject reqOptions = JSONObject(args.getString(0));
+					final JSONObject reqOptions = new JSONObject(args.getString(0));
 					final String fingerprint = args.getString(1);
 					final String hostname = reqOptions.getString("host");
 					final URL reqUrl = initURL("https://" + hostname + ":" + reqOptions.getString("port") + reqOptions.getString("path"));
-					HttpsURLConnection conn = new HttpsURLConnection(reqUrl);
+					HttpsURLConnection conn = (HttpsURLConnection) reqUrl.openConnection();
 
 					//Append headers, if any
 					if (reqOptions.has("headers")){
@@ -111,7 +116,7 @@ public class PinnedHTTP extends CordovaPlugin {
 					int httpStatusCode = conn.getResponseCode();
 					Map<String, List<String>> responseHeaders = conn.getHeaderFields();
 					BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-					String reponse = "";
+					String response = "";
 					int c;
 					while ((c = reader.read()) != -1){
 						response += (char) c;
