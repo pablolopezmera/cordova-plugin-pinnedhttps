@@ -12,7 +12,7 @@
 	</engines>
 
 	<js-module name="PinnedHTTPS" src="www/PinnedHTTPS.js">
-		<clobbers target="navigator.httpsFactory"/>
+		<clobbers target="navigator.httpsBuilder"/>
 	</js-module>
 
 	<!--iOS plugin-->

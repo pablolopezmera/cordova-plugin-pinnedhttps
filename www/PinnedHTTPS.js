@@ -53,7 +53,7 @@ PinnedHTTPS.prototype.request = function(options, callback){
 	}
 }
 
-module.exports.PinnedHTTPS = PinnedHTTPS;
+module.exports = PinnedHTTPS;
 
 function isSHA1(s){
 	return (typeof s == 'string' && s.length == 40 && /^([a-f]|[0-9])+$/i.test(s));
