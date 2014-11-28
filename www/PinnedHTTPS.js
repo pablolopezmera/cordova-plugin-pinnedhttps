@@ -3,7 +3,8 @@ var exec = require('cordova/exec');
 
 function PinnedHTTPS(expectedFingerprint){
 	if (typeof expectedFingerprint != 'string') throw new TypeError('expectedFingerprint must be a string');
-	expectedFingerprint = expectedFingerprint.trim().replace(' ', '').toLowerCase();
+	expectedFingerprint = expectedFingerprint.trim().replace(/ +/g, '').toLowerCase();
+	console.log('Expected fingerprint: ' + expectedFingerprint);
 	if (!isSHA1(expectedFingerprint)) throw new TypeError('invalid expectedFingerprint. Must be an SHA1 fingerprint');
 	this.fingerprint = expectedFingerprint
 }
@@ -12,7 +13,7 @@ PinnedHTTPS.prototype.get = function(url, callback){
 	if (typeof url != 'string') throw new TypeError('url must be a string');
 	if (typeof callback != 'function') throw new TypeError('callback must be a function');
 
-	cordova.exec(responseHandler, errorHandler, 'get', [url, this.fingerprint]);
+	cordova.exec(responseHandler, errorHandler, 'PinnedHTTPS', 'get', [url, this.fingerprint]);
 
 	function responseHandler(responseObj){
 		callback(null, responseObj);
@@ -43,7 +44,7 @@ PinnedHTTPS.prototype.request = function(options, callback){
 		}
 	}
 
-	cordova.exec(responseHandler, errorHandler, 'req', [JSON.stringify(options), this.fingerprint]);
+	cordova.exec(responseHandler, errorHandler, 'PinnedHTTPS', 'req', [JSON.stringify(options), this.fingerprint]);
 
 	function responseHandler(responseObj){
 		callback(null, responseObj);
