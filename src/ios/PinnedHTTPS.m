@@ -26,7 +26,7 @@
 	self._plugin = plugin;
 	self._callbackId = callbackId;
 	self._fingerprint = fingerprint;
-	self._responseBody = [[NSMutableData alloc] init];
+	//self._responseBody = [[NSMutableData alloc] init];
 	return self;
 }
 
@@ -112,7 +112,7 @@
     //Parsing the options dictionary
     NSData *jsonData = [optionsJsonStr dataUsingEncoding:NSUTF8StringEncoding];
     NSError *jsonErr = nil;
-    NSDictionary *options = [NSJSONSerialization JSONObjectWithData:jsonData options:nil error:&jsonErr];
+    NSDictionary *options = [NSJSONSerialization JSONObjectWithData:jsonData options:NSJSONReadingMutableContainers|NSJSONReadingMutableLeaves error:&jsonErr];
 
     if (jsonErr != nil){
         CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString:@"invalid JSON for options object"];
@@ -151,7 +151,7 @@
 		} else if ([reqBody isKindOfClass: [NSDictionary class]]){
 			//To JSON, append to request and send out
 			NSError *stringifyErr = nil;
-			NSData *reqData = [NSJSONSerialization dataWithJSONObject: (NSDictionary*) reqBody options:nil error:&stringifyErr];
+			NSData *reqData = [NSJSONSerialization dataWithJSONObject: (NSDictionary*) reqBody options:NSJSONWritingPrettyPrinted error:&stringifyErr];
 			[req setValue: [NSString stringWithFormat:@"%d", reqData.length] forHTTPHeaderField:@"Content-Length"];
 			[req setValue: @"application/json" forHTTPHeaderField:@"Content-Type"];
 			[req setHTTPBody: reqData];
