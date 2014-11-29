@@ -16,7 +16,7 @@ PinnedHTTPS.prototype.get = function(url, callback){
 	cordova.exec(responseHandler, errorHandler, 'PinnedHTTPS', 'get', [url, this.fingerprint]);
 
 	function responseHandler(responseObj){
-		callback(null, responseObj);
+		callback(null, JSON.parse(responseObj));
 	}
 	function errorHandler(errObj){
 		callback(errObj);
@@ -47,7 +47,7 @@ PinnedHTTPS.prototype.request = function(options, callback){
 	cordova.exec(responseHandler, errorHandler, 'PinnedHTTPS', 'req', [JSON.stringify(options), this.fingerprint]);
 
 	function responseHandler(responseObj){
-		callback(null, responseObj);
+		callback(null, JSON.parse(responseObj));
 	}
 	function errorHandler(errObj){
 		callback(errObj);

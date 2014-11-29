@@ -8,10 +8,8 @@
 @property (strong, nonatomic) CDVPlugin *_plugin;
 @property (strong, nonatomic) NSString *_callbackId;
 @property (strong, nonatomic) NSString *_fingerprint;
-@property (strong, nonatomic) NSDictionary *_requestHeaders;
-@property (strong, nonatomic) NSMutableData *_requestBody;
 @property (nonatomic, assign) BOOL validFingerprint;
-@property (nonatomic, assign) NSMutableData *_responseBody;
+@property (retain) NSMutableData *_responseBody;
 @property (nonatomic, assign) NSMutableDictionary *_responseObj;
 
 - (id)initWithPlugin:(CDVPlugin*)plugin callbackId:(NSString*)callbackId fingerprint:(NSString*)fingerprint;
@@ -32,13 +30,19 @@
 
 - (void)connection: (NSURLConnection*)connection willSendRequestForAuthenticationChallenge: (NSURLAuthenticationChallenge*)challenge
 {
+	NSLog(@"Cert check");
 	NSString* connFingerprint = [self getFingerprint: SecTrustGetCertificateAtIndex(challenge.protectionSpace.serverTrust, 0)];
 
 	if ([connFingerprint caseInsensitiveCompare: self._fingerprint] == NSOrderedSame){
 		self.validFingerprint = true;
+		NSLog(@"Valid cert");
+		NSURLCredential *cred = [NSURLCredential credentialForTrust: SecTrustGetCertificateAtIndex(challenge.protectionSpace.serverTrust, 0)];
+		[[challenge sender] useCredential: cred forAuthenticationChallenge: challenge];
 	} else {
 		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Invalid fingerprint on server!"];
 		[self._plugin writeJavascript:[rslt toErrorCallbackString: self._callbackId]];
+		NSLog(@"Invalid cert");
+		[connection cancel];
 	}
 }
 
@@ -46,22 +50,26 @@
 	//[self._responseBody release];
 	//[connection release];
     NSString *resultCode = @"Connection error. Details:";
+	NSLog([NSString stringWithFormat:@"Connection error %@", [error localizedDescription]]);
     NSString *errStr = [NSString stringWithFormat:@"%@ %@", resultCode, [error localizedDescription]];
     CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:errStr];
     [self._plugin writeJavascript:[pluginResult toErrorCallbackString:self._callbackId]];
 }
 
 - (void)connection: (NSURLConnection*)connection didRecieveResponse:(NSURLResponse*)res{
+	NSLog(@"Response received");
     NSHTTPURLResponse *httpRes = (NSHTTPURLResponse*) res;
-    self._responseObj = [NSMutableDictionary dictionaryWithDictionary:@{@"statusCode": [NSNumber numberWithInt:httpRes.statusCode], @"headers": httpRes.allHeaderFields}];
+    self._responseObj = [NSMutableDictionary dictionaryWithDictionary:@{@"statusCode": [NSNumber numberWithLong:httpRes.statusCode], @"headers": httpRes.allHeaderFields}];
 }
 
 - (void)connection: (NSURLConnection*)connection didReceiveData:(NSData *)data{
-	if (self._responseBody == nil) self._responseBody = [[NSMutableData alloc] init];
-	[self._responseBody appendData: data];
+	NSLog(@"Receiving data");
+	if (!self._responseBody) self._responseBody = [[NSMutableData alloc] initWithData: data];
+	else [self._responseBody appendData: data];
 }
 
 - (void)connectionDidFinishLoading:(NSURLConnection*)connection {
+	NSLog(@"End of response");
     //Append response body and pass to JS
     NSString *responseBodyStr = [[NSString alloc] initWithData: self._responseBody encoding: NSUTF8StringEncoding];
     [self._responseObj setObject: responseBodyStr forKey: @"body"];
@@ -101,9 +109,10 @@
 
 	NSURLConnection *connection = [NSURLConnection connectionWithRequest: req delegate: delegate];
 	if (!connection){
+		NSLog(@"Error with connection");
 		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_ERROR messageAsString: @"Connction error"];
 		[self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
-	}
+	} else NSLog(@"Connection established");
 }
 
 - (void)req:(CDVInvokedUrlCommand*)command {
@@ -156,19 +165,21 @@
 			[req setValue: @"application/json" forHTTPHeaderField:@"Content-Type"];
 			[req setHTTPBody: reqData];
 		} else {
+			NSLog(@"Unknown body type");
 			CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString:@"Invalid request body format"];
 			[self writeJavascript: [rslt toErrorCallbackString:command.callbackId]];
 			return;
 		}
-    }
+    } else NSLog(@"No request body");
 
     CustomURLConnectionDelegate* delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin: self callbackId: command.callbackId fingerprint: expectedFingerprint];
     NSURLConnection *connection = [[NSURLConnection alloc] initWithRequest: req delegate: delegate];
 
     if(!connection){
+		NSLog(@"Connection couldn't be initialized");
         CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_ERROR messageAsString:@"Connection error"];
         [self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
-    }
+    } else NSLog(@"Connection started");
 }
 
 /*- (NSString*) getMultipart: (NSDictionary)d{

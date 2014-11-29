@@ -124,7 +124,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 
 						JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders);
 						if (responseObj == null) callbackContext.error("Error while building response object");
-						else callbackContext.success(responseObj);
+						else callbackContext.success(responseObj.toString());
 					} catch (Exception e){
 						callbackContext.error("Request failed");
 					}
@@ -236,7 +236,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 
 						JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders);
 						if (responseObj == null) callbackContext.error("Cannot build reponse");
-						else callbackContext.success(responseObj);
+						else callbackContext.success(responseObj.toString());
 					} catch (Exception e){
 						callbackContext.error("Error while building response object");
 					}
