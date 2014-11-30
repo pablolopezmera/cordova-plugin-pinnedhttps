@@ -10,7 +10,7 @@
 @property (strong, nonatomic) NSString *_fingerprint;
 @property (nonatomic, assign) BOOL validFingerprint;
 @property (retain) NSMutableData *_responseBody;
-@property (nonatomic, assign) NSMutableDictionary *_responseObj;
+@property (retain) NSMutableDictionary *_responseObj;
 
 - (id)initWithPlugin:(CDVPlugin*)plugin callbackId:(NSString*)callbackId fingerprint:(NSString*)fingerprint;
 
@@ -73,7 +73,16 @@
     //Append response body and pass to JS
     NSString *responseBodyStr = [[NSString alloc] initWithData: self._responseBody encoding: NSUTF8StringEncoding];
     [self._responseObj setObject: responseBodyStr forKey: @"body"];
-    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary: self._responseObj];
+    NSError *e = nil;
+    NSData *resJsonData = [NSJSONSerialization dataWithJSONObject: (NSDictionary*) self._responseObj options: NSJSONWritingPrettyPrinted error:&e];
+    if (e){
+        NSLog(@"toJSON error");
+        CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_JSON_EXCEPTION messageAsString:[e localizedDescription]];
+        [self._plugin writeJavascript: [rslt toErrorCallbackString:self._callbackId]];
+        return;
+    }
+    NSString *resJson = [[NSString alloc] initWithData:resJsonData encoding: NSUTF8StringEncoding];
+    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:resJson];
     [self._plugin writeJavascript: [pluginResult toSuccessCallbackString:self._callbackId]];
     //[responseBodyStr release];
 }
