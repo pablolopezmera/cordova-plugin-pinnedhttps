@@ -31,12 +31,14 @@
 - (void)connection: (NSURLConnection*)connection willSendRequestForAuthenticationChallenge: (NSURLAuthenticationChallenge*)challenge
 {
 	NSLog(@"Cert check");
-	NSString* connFingerprint = [self getFingerprint: SecTrustGetCertificateAtIndex(challenge.protectionSpace.serverTrust, 0)];
+    SecTrustRef serverCert = challenge.protectionSpace.serverTrust;
+	NSString* connFingerprint = [self getFingerprint: SecTrustGetCertificateAtIndex(serverCert, 0)];
+    NSLog(@"Found fingerprint for %@: %@", connection.originalRequest.URL.host, connFingerprint);
 
 	if ([connFingerprint caseInsensitiveCompare: self._fingerprint] == NSOrderedSame){
 		self.validFingerprint = true;
 		NSLog(@"Valid cert");
-		NSURLCredential *cred = [NSURLCredential credentialForTrust: SecTrustGetCertificateAtIndex(challenge.protectionSpace.serverTrust, 0)];
+		NSURLCredential *cred = [NSURLCredential credentialForTrust: serverCert];
 		[[challenge sender] useCredential: cred forAuthenticationChallenge: challenge];
 	} else {
 		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Invalid fingerprint on server!"];
@@ -56,7 +58,7 @@
     [self._plugin writeJavascript:[pluginResult toErrorCallbackString:self._callbackId]];
 }
 
-- (void)connection: (NSURLConnection*)connection didRecieveResponse:(NSURLResponse*)res{
+- (void)connection: (NSURLConnection*)connection didReceiveResponse:(NSURLResponse*)res{
 	NSLog(@"Response received");
     NSHTTPURLResponse *httpRes = (NSHTTPURLResponse*) res;
     self._responseObj = [NSMutableDictionary dictionaryWithDictionary:@{@"statusCode": [NSNumber numberWithLong:httpRes.statusCode], @"headers": httpRes.allHeaderFields}];
@@ -72,16 +74,24 @@
 	NSLog(@"End of response");
     //Append response body and pass to JS
     NSString *responseBodyStr = [[NSString alloc] initWithData: self._responseBody encoding: NSUTF8StringEncoding];
-    [self._responseObj setObject: responseBodyStr forKey: @"body"];
-    NSError *e = nil;
-    NSData *resJsonData = [NSJSONSerialization dataWithJSONObject: (NSDictionary*) self._responseObj options: NSJSONWritingPrettyPrinted error:&e];
+    //NSLog(responseBodyStr);
+    [self._responseObj setValue: responseBodyStr forKey: @"body"];
+    NSError *e;
+    NSLog(@"toJSON");
+    if (!self._responseObj){
+        NSLog(@"_responseObj is nil");
+    }
+    NSData *resJsonData = [NSJSONSerialization dataWithJSONObject: self._responseObj options:0 error:&e];
+    NSLog(@"toJSON ended");
     if (e){
         NSLog(@"toJSON error");
         CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_JSON_EXCEPTION messageAsString:[e localizedDescription]];
         [self._plugin writeJavascript: [rslt toErrorCallbackString:self._callbackId]];
         return;
     }
+    NSLog(@"Preparing JSON str");
     NSString *resJson = [[NSString alloc] initWithData:resJsonData encoding: NSUTF8StringEncoding];
+    NSLog(@"Res json: %@", resJson);
     CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:resJson];
     [self._plugin writeJavascript: [pluginResult toSuccessCallbackString:self._callbackId]];
     //[responseBodyStr release];
@@ -90,10 +100,10 @@
 - (NSString*)getFingerprint: (SecCertificateRef) cert{
 	NSData *certData = (__bridge NSData*) SecCertificateCopyData(cert);
 	unsigned char sha1_bytes[CC_SHA1_DIGEST_LENGTH];
-	CC_SHA1(certData.bytes, certData.length, sha1_bytes);
+	CC_SHA1(certData.bytes, (unsigned int) certData.length, sha1_bytes);
 	NSMutableString *connFingerprint = [NSMutableString stringWithCapacity:CC_SHA1_DIGEST_LENGTH * 2];
 	for (int i = 0; i < CC_SHA1_DIGEST_LENGTH; i++){
-		[connFingerprint appendFormat:@"%x", sha1_bytes[i]];
+		[connFingerprint appendFormat:@"%02x", sha1_bytes[i]];
 	}
 	return [connFingerprint lowercaseString];
 }
@@ -129,7 +139,7 @@
     NSString *expectedFingerprint = [command.arguments objectAtIndex:1];
     //Parsing the options dictionary
     NSData *jsonData = [optionsJsonStr dataUsingEncoding:NSUTF8StringEncoding];
-    NSError *jsonErr = nil;
+    NSError *jsonErr;
     NSDictionary *options = [NSJSONSerialization JSONObjectWithData:jsonData options:NSJSONReadingMutableContainers|NSJSONReadingMutableLeaves error:&jsonErr];
 
     if (jsonErr != nil){
@@ -164,13 +174,13 @@
 		if ([reqBody isKindOfClass: [NSString class]]){
 			//Append to request and send out
 			NSData *reqData = [(NSString*) reqBody dataUsingEncoding:NSUTF8StringEncoding];
-			[req setValue:[NSString stringWithFormat:@"%d", reqData.length] forHTTPHeaderField:@"Content-Length"];
+			[req setValue:[NSString stringWithFormat:@"%d", (int) reqData.length] forHTTPHeaderField:@"Content-Length"];
 			[req setHTTPBody: reqData];
 		} else if ([reqBody isKindOfClass: [NSDictionary class]]){
 			//To JSON, append to request and send out
 			NSError *stringifyErr = nil;
 			NSData *reqData = [NSJSONSerialization dataWithJSONObject: (NSDictionary*) reqBody options:NSJSONWritingPrettyPrinted error:&stringifyErr];
-			[req setValue: [NSString stringWithFormat:@"%d", reqData.length] forHTTPHeaderField:@"Content-Length"];
+			[req setValue: [NSString stringWithFormat:@"%d", (int) reqData.length] forHTTPHeaderField:@"Content-Length"];
 			[req setValue: @"application/json" forHTTPHeaderField:@"Content-Type"];
 			[req setHTTPBody: reqData];
 		} else {
