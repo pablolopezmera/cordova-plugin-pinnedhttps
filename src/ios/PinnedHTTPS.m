@@ -24,26 +24,25 @@
 	self._plugin = plugin;
 	self._callbackId = callbackId;
 	self._fingerprint = fingerprint;
-	//self._responseBody = [[NSMutableData alloc] init];
 	return self;
 }
 
 - (void)connection: (NSURLConnection*)connection willSendRequestForAuthenticationChallenge: (NSURLAuthenticationChallenge*)challenge
 {
-	NSLog(@"Cert check");
+	NSLog(@"Cert check for %@", connection.originalRequest.URL.host);
     SecTrustRef serverCert = challenge.protectionSpace.serverTrust;
 	NSString* connFingerprint = [self getFingerprint: SecTrustGetCertificateAtIndex(serverCert, 0)];
     NSLog(@"Found fingerprint for %@: %@", connection.originalRequest.URL.host, connFingerprint);
 
 	if ([connFingerprint caseInsensitiveCompare: self._fingerprint] == NSOrderedSame){
 		self.validFingerprint = true;
-		NSLog(@"Valid cert");
+		NSLog(@"Valid cert for %@", connection.originalRequest.URL.host);
 		NSURLCredential *cred = [NSURLCredential credentialForTrust: serverCert];
 		[[challenge sender] useCredential: cred forAuthenticationChallenge: challenge];
 	} else {
-		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Invalid fingerprint on server!"];
+		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"INVALID_CERT"];
 		[self._plugin writeJavascript:[rslt toErrorCallbackString: self._callbackId]];
-		NSLog(@"Invalid cert");
+		NSLog(@"Invalid cert for %@", connection.originalRequest.URL.host);
 		[connection cancel];
 	}
 }
@@ -59,42 +58,22 @@
 }
 
 - (void)connection: (NSURLConnection*)connection didReceiveResponse:(NSURLResponse*)res{
-	NSLog(@"Response received");
     NSHTTPURLResponse *httpRes = (NSHTTPURLResponse*) res;
     self._responseObj = [NSMutableDictionary dictionaryWithDictionary:@{@"statusCode": [NSNumber numberWithLong:httpRes.statusCode], @"headers": httpRes.allHeaderFields}];
 }
 
 - (void)connection: (NSURLConnection*)connection didReceiveData:(NSData *)data{
-	NSLog(@"Receiving data");
 	if (!self._responseBody) self._responseBody = [[NSMutableData alloc] initWithData: data];
 	else [self._responseBody appendData: data];
 }
 
 - (void)connectionDidFinishLoading:(NSURLConnection*)connection {
-	NSLog(@"End of response");
     //Append response body and pass to JS
     NSString *responseBodyStr = [[NSString alloc] initWithData: self._responseBody encoding: NSUTF8StringEncoding];
-    //NSLog(responseBodyStr);
     [self._responseObj setValue: responseBodyStr forKey: @"body"];
-    NSError *e;
-    NSLog(@"toJSON");
-    if (!self._responseObj){
-        NSLog(@"_responseObj is nil");
-    }
-    NSData *resJsonData = [NSJSONSerialization dataWithJSONObject: self._responseObj options:0 error:&e];
-    NSLog(@"toJSON ended");
-    if (e){
-        NSLog(@"toJSON error");
-        CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_JSON_EXCEPTION messageAsString:[e localizedDescription]];
-        [self._plugin writeJavascript: [rslt toErrorCallbackString:self._callbackId]];
-        return;
-    }
-    NSLog(@"Preparing JSON str");
-    NSString *resJson = [[NSString alloc] initWithData:resJsonData encoding: NSUTF8StringEncoding];
-    NSLog(@"Res json: %@", resJson);
-    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:resJson];
+
+    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:self._responseObj];
     [self._plugin writeJavascript: [pluginResult toSuccessCallbackString:self._callbackId]];
-    //[responseBodyStr release];
 }
 
 - (NSString*)getFingerprint: (SecCertificateRef) cert{
@@ -113,7 +92,6 @@
 @interface PinnedHTTPS ()
 
 @property (strong, nonatomic) NSString *_callbackId;
-//@property (strong, nonatomic) NSMutableData *_connections;
 
 @end
 
@@ -122,21 +100,23 @@
 - (void)get:(CDVInvokedUrlCommand*)command {
 	NSString *reqUrl = [command.arguments objectAtIndex:0];
 	NSString *expectedFingerprint = [command.arguments objectAtIndex:1];
-
+    NSLog(@"get %@", reqUrl);
+    NSLog(@"Finger: %@", expectedFingerprint);
 	NSURLRequest *req = [NSURLRequest requestWithURL: [NSURL URLWithString: reqUrl] cachePolicy: NSURLCacheStorageNotAllowed timeoutInterval: 20.0];
 	CustomURLConnectionDelegate *delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin:self callbackId: command.callbackId fingerprint: expectedFingerprint];
 
-	NSURLConnection *connection = [NSURLConnection connectionWithRequest: req delegate: delegate];
+	NSURLConnection *connection = [[NSURLConnection alloc] initWithRequest: req delegate: delegate];
 	if (!connection){
 		NSLog(@"Error with connection");
 		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_ERROR messageAsString: @"Connction error"];
 		[self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
-	} else NSLog(@"Connection established");
+	}
 }
 
 - (void)req:(CDVInvokedUrlCommand*)command {
     NSString *optionsJsonStr = [command.arguments objectAtIndex:0];
     NSString *expectedFingerprint = [command.arguments objectAtIndex:1];
+    NSLog(@"Finger: %@", expectedFingerprint);
     //Parsing the options dictionary
     NSData *jsonData = [optionsJsonStr dataUsingEncoding:NSUTF8StringEncoding];
     NSError *jsonErr;
@@ -189,7 +169,7 @@
 			[self writeJavascript: [rslt toErrorCallbackString:command.callbackId]];
 			return;
 		}
-    } else NSLog(@"No request body");
+    }
 
     CustomURLConnectionDelegate* delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin: self callbackId: command.callbackId fingerprint: expectedFingerprint];
     NSURLConnection *connection = [[NSURLConnection alloc] initWithRequest: req delegate: delegate];
@@ -198,7 +178,7 @@
 		NSLog(@"Connection couldn't be initialized");
         CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_ERROR messageAsString:@"Connection error"];
         [self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
-    } else NSLog(@"Connection started");
+    }
 }
 
 /*- (NSString*) getMultipart: (NSDictionary)d{

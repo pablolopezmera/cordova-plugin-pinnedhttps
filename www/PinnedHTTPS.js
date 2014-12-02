@@ -4,7 +4,7 @@ var exec = require('cordova/exec');
 function PinnedHTTPS(expectedFingerprint){
 	if (typeof expectedFingerprint != 'string') throw new TypeError('expectedFingerprint must be a string');
 	expectedFingerprint = expectedFingerprint.trim().replace(/ +/g, '').toLowerCase();
-	console.log('Expected fingerprint: ' + expectedFingerprint);
+	//console.log('Expected fingerprint: ' + expectedFingerprint);
 	if (!isSHA1(expectedFingerprint)) throw new TypeError('invalid expectedFingerprint. Must be an SHA1 fingerprint');
 	this.fingerprint = expectedFingerprint
 }
