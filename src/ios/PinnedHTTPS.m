@@ -11,6 +11,7 @@
 @property (nonatomic, assign) BOOL validFingerprint;
 @property (retain) NSMutableData *_responseBody;
 @property (retain) NSMutableDictionary *_responseObj;
+@property (retain) NSString *_foundFingerprint;
 
 - (id)initWithPlugin:(CDVPlugin*)plugin callbackId:(NSString*)callbackId fingerprint:(NSString*)fingerprint;
 
@@ -27,24 +28,49 @@
 	return self;
 }
 
-- (void)connection: (NSURLConnection*)connection willSendRequestForAuthenticationChallenge: (NSURLAuthenticationChallenge*)challenge
+/*- (void)connection: (NSURLConnection*)connection willSendRequestForAuthenticationChallenge: (NSURLAuthenticationChallenge*)challenge
 {
-	NSLog(@"Cert check for %@", connection.originalRequest.URL.host);
+	NSLog(@"Cert check for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
     SecTrustRef serverCert = challenge.protectionSpace.serverTrust;
 	NSString* connFingerprint = [self getFingerprint: SecTrustGetCertificateAtIndex(serverCert, 0)];
-    NSLog(@"Found fingerprint for %@: %@", connection.originalRequest.URL.host, connFingerprint);
+    self._foundFingerprint = connFingerprint;
+    NSLog(@"Found fingerprint for %@ %@: %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host, connFingerprint);
 
 	if ([connFingerprint caseInsensitiveCompare: self._fingerprint] == NSOrderedSame){
 		self.validFingerprint = true;
-		NSLog(@"Valid cert for %@", connection.originalRequest.URL.host);
+		NSLog(@"Valid cert for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
 		NSURLCredential *cred = [NSURLCredential credentialForTrust: serverCert];
 		[[challenge sender] useCredential: cred forAuthenticationChallenge: challenge];
 	} else {
-		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"INVALID_CERT"];
-		[self._plugin writeJavascript:[rslt toErrorCallbackString: self._callbackId]];
-		NSLog(@"Invalid cert for %@", connection.originalRequest.URL.host);
-		[connection cancel];
+		//CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"INVALID_CERT"];
+		//[self._plugin writeJavascript:[rslt toErrorCallbackString: self._callbackId]];
+		NSLog(@"Invalid cert for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
+		//[connection cancel];
 	}
+}*/
+
+- (void)connection:(NSURLConnection *)connection didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
+{
+    NSLog(@"Cert check for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
+    SecTrustRef serverCert = challenge.protectionSpace.serverTrust;
+	NSString* connFingerprint = [self getFingerprint: SecTrustGetCertificateAtIndex(serverCert, 0)];
+    self._foundFingerprint = connFingerprint;
+    NSLog(@"Found fingerprint for %@ %@: %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host, connFingerprint);
+    
+    if ([self._foundFingerprint caseInsensitiveCompare:self._fingerprint] == NSOrderedSame){
+        [challenge.sender useCredential:[NSURLCredential credentialForTrust:serverCert] forAuthenticationChallenge:challenge];
+    } else {
+        CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"INVALID_CERT"];
+		[self._plugin writeJavascript:[rslt toErrorCallbackString: self._callbackId]];
+		NSLog(@"Invalid cert for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
+		[connection cancel];
+    }
+    
+}
+
+- (BOOL)connection:(NSURLConnection *)connection canAuthenticateAgainstProtectionSpace:(NSURLProtectionSpace *)protectionSpace
+{
+    return [protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust];
 }
 
 - (void)connection: (NSURLConnection*)connection didFailWithError: (NSError*)error {
@@ -101,9 +127,9 @@
 	NSString *reqUrl = [command.arguments objectAtIndex:0];
 	NSString *expectedFingerprint = [command.arguments objectAtIndex:1];
     NSLog(@"get %@", reqUrl);
-    NSLog(@"Finger: %@", expectedFingerprint);
 	NSURLRequest *req = [NSURLRequest requestWithURL: [NSURL URLWithString: reqUrl] cachePolicy: NSURLCacheStorageNotAllowed timeoutInterval: 20.0];
 	CustomURLConnectionDelegate *delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin:self callbackId: command.callbackId fingerprint: expectedFingerprint];
+    NSLog(@"Finger (get) : %@", delegate._fingerprint);
 
 	NSURLConnection *connection = [[NSURLConnection alloc] initWithRequest: req delegate: delegate];
 	if (!connection){
