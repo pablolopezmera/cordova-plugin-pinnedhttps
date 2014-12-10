@@ -103,7 +103,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 						callbackContext.error("Cannot connect to " + getUrlStr + " (timeout)");
 						return;
 					} catch (IOException e){
-						if (e.getMessage().indexOf("INVALID_CERT") > -1) callbackContext.error("Invalid certificate on server!");
+						if (e.getMessage().indexOf("INVALID_CERT") > -1) callbackContext.error("INVALID_CERT");
 						else callbackContext.error("Cannot connect to " + getUrlStr + ": " + e.toString());
 						Log.v(logTag, "IOException:\n" + getStackTraceStr(e));
 						return;
@@ -218,7 +218,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 						callbackContext.error("Cannot connect to " + reqUrlStr + " (timeout)");
 						return;
 					} catch (IOException e){
-						if (e.getMessage().indexOf("INVALID_CERT") > -1) callbackContext.error("Invalid certificate on server!");
+						if (e.getMessage().indexOf("INVALID_CERT") > -1) callbackContext.error("INVALID_CERT");
 						else callbackContext.error("Cannot connect to " + reqUrlStr + ": " + e.toString());
 						Log.v(logTag, "IOException:\n" + getStackTraceStr(e));
 						return;
