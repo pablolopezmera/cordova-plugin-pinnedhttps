@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.Iterator;
 import java.lang.StringBuffer;
+import java.lang.StackTraceElement;
 
 import java.util.concurrent.RejectedExecutionException;
 import java.lang.NullPointerException;
@@ -24,7 +25,6 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -39,9 +39,7 @@ import java.security.cert.CertificateEncodingException;
 
 public class PinnedHTTPS extends CordovaPlugin {
 
-	private static char[] HEX_CHARS = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
-
-	private static String logTag = "PinnedHTTPS";
+	private final static String logTag = "PinnedHTTPS";
 
 	@Override
 	public boolean execute(final String method, final JSONArray args, final CallbackContext callbackContext) throws RejectedExecutionException, NullPointerException {//JSONException, IOException, NoSuchAlgorithmException{ //, CertificateException{ //, CertificateEncodingException {
@@ -79,40 +77,20 @@ public class PinnedHTTPS extends CordovaPlugin {
 					try {
 						conn.setUseCaches(false);
 						Log.v(logTag, "Disabled cache");
-						final String f_hostname = hostname;
-						final String f_fingerprint = fingerprint;
-						conn.setDefaultHostnameVerifier(new HostnameVerifier(){
-							public boolean verify(String connectedHostname, SSLSession sslSession){
-								if (!connectedHostname.equals(f_hostname)){
-									return false;
-								}
 
-								Certificate serverCert;
-								MessageDigest md;
-								try {
-									serverCert = sslSession.getPeerCertificates()[0]; //Getting the servers own certificate
-									md = MessageDigest.getInstance("SHA1"); //Instanciating SHA1
-									md.update(serverCert.getEncoded());
-								} catch (SSLPeerUnverifiedException e){
-									callbackContext.error("Peer ceritifcate error. Cannot check identity. Kiling the connection");
-									return false;
-								} catch (NoSuchAlgorithmException e){
-									callbackContext.error("Missing SHA1 support!. Killing the connection. Please update Android");
-									return false;
-								} catch (CertificateEncodingException e){
-									callbackContext.error("Bad certificate encoding");
-									return false;
-								}
-								return dumpHex(md.digest()).equals(removeSpaces(f_fingerprint.toUpperCase())); //Fingerprint check, in itself
-							}
-						});
-						Log.v(logTag, "Hostname verifier has been set");
-
-						TrustManager tm[] = { new HashTrust() };
+						TrustManager tm[] = { new HashTrust(fingerprint) };
 						SSLContext connContext = SSLContext.getInstance("TLS");
 						connContext.init(null, tm, null);
 						conn.setSSLSocketFactory(connContext.getSocketFactory());
-						Log.v(logTag, "Blank trust manager has been set");
+						Log.v(logTag, "Hash-based trust manager has been set");
+
+						conn.setHostnameVerifier(new HostnameVerifier(){
+							public boolean verify(String connectedHostname, SSLSession sslSession){
+								return true;
+							}
+						});
+						Log.v(logTag, "Blank hostname verifier has been set");
+
 					} catch (Exception e){
 						callbackContext.error("Error while setting up the conneciton: " + e.toString());
 						return;
@@ -212,40 +190,20 @@ public class PinnedHTTPS extends CordovaPlugin {
 						conn.setRequestMethod(httpMethod.toUpperCase());
 						conn.setUseCaches(false);
 						Log.v(logTag, "Set the HTTP method to use. Disabled cache");
-						final String f_hostname = hostname;
-						final String f_fingerprint = fingerprint;
-						conn.setDefaultHostnameVerifier(new HostnameVerifier(){
-							public boolean verify(String connectedHostname, SSLSession sslSession){
-								if (!connectedHostname.equals(f_hostname)){
-									return false;
-								}
 
-								Certificate serverCert;
-								MessageDigest md;
-								try {
-									serverCert = sslSession.getPeerCertificates()[0]; //Getting the servers own certificate
-									md = MessageDigest.getInstance("SHA1"); //Instanciating SHA1
-									md.update(serverCert.getEncoded());
-								} catch (SSLPeerUnverifiedException e){
-									callbackContext.error("Peer ceritifcate error. Cannot check identity. Kiling the connection");
-									return false;
-								} catch (NoSuchAlgorithmException e){
-									callbackContext.error("Missing SHA1 support!. Killing the connection. Please update Android");
-									return false;
-								} catch (CertificateEncodingException e){
-									callbackContext.error("Bad certificate encoding");
-									return false;
-								}
-								return dumpHex(md.digest()).equals(removeSpaces(f_fingerprint.toUpperCase())); //Fingerprint check, in itself
-							}
-						});
-						Log.v(logTag, "Hostname verifier has been set");
-
-						TrustManager tm[] = { new HashTrust() };
+						TrustManager tm[] = { new HashTrust(fingerprint) };
 						SSLContext connContext = SSLContext.getInstance("TLS");
 						connContext.init(null, tm, null);
 						conn.setSSLSocketFactory(connContext.getSocketFactory());
 						Log.v(logTag, "Blank trust manager has been set");
+
+						conn.setHostnameVerifier(new HostnameVerifier(){
+							public boolean verify(String connectedHostname, SSLSession sslSession){
+								return true;
+							}
+						});
+						Log.v(logTag, "Blank hostname verifier has been set");
+
 					} catch (Exception e){
 						callbackContext.error("Error while setting up the connection: " + e.toString());
 						return;
@@ -259,6 +217,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 						return;
 					} catch (IOException e){
 						callbackContext.error("Cannot connect to " + reqUrlStr + ": " + e.toString());
+						Log.v(logTag, "IOException:\n" + getStackTraceStr(e));
 						return;
 					}
 					try {
@@ -321,25 +280,21 @@ public class PinnedHTTPS extends CordovaPlugin {
 		return responseObj;
 	}
 
-	private static String dumpHex(byte[] data){ //To hex. No spacing between bytes
-		final int n = data.length;
-		final StringBuilder sb = new StringBuilder(n * 2);
-		for (int i = 0; i < n; i++){
-			sb.append(HEX_CHARS[(data[i] >> 4) & 0x0f]);
-			sb.append(HEX_CHARS[data[i] & 0x0f]);
-		}
-		return sb.toString();
-	}
-
-	private static String removeSpaces(String s){
-		return s.replace(" ", "");
-	}
-
 	private static URL initURL(String s){
 		try {
 			return new URL(s);
 		} catch (Exception e){
 			return null;
 		}
+	}
+
+	private static String getStackTraceStr(Exception e){
+		StringBuffer s = new StringBuffer();
+		s.append(e.getMessage() + "\n");
+		StackTraceElement[] callstack = e.getStackTrace();
+		for (int i = 0; i < callstack.length; i++){
+			s.append(callstack[i].toString() + "\n");
+		}
+		return s.toString();
 	}
 }
