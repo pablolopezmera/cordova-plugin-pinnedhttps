@@ -142,9 +142,16 @@ public class PinnedHTTPS extends CordovaPlugin {
 						conn.disconnect();
 
 						Log.v(logTag, "Building response object");
-						JSONObject responseObj = buildResponseJson(httpStatusCode, response.toString(), responseHeaders);
+						JSONObject responseObj;
+						try {
+							responseObj = buildResponseJson(httpStatusCode, response.toString(), responseHeaders);
+						} catch (JSONException e){
+							callbackContext.error("Error while building response object: " + e.toString());
+							return;
+						}
 						if (responseObj == null) callbackContext.error("Error while building response object");
 						else callbackContext.success(responseObj.toString());
+						Log.v(logTag, "End of get");
 					} catch (Exception e){
 						callbackContext.error("Error while building response object: " + e.toString());
 					}
@@ -268,9 +275,16 @@ public class PinnedHTTPS extends CordovaPlugin {
 						conn.disconnect();
 
 						Log.v(logTag, "Building response object");
-						JSONObject responseObj = buildResponseJson(httpStatusCode, response.toString(), responseHeaders);
+						JSONObject responseObj;
+						try {
+							responseObj = buildResponseJson(httpStatusCode, response.toString(), responseHeaders);
+						} catch (JSONException e){
+							callbackContext.error("Error while building response object: " + e.toString());
+							return;
+						}
 						if (responseObj == null) callbackContext.error("Cannot build reponse");
 						else callbackContext.success(responseObj.toString());
+						Log.v(logTag, "End of req");
 					} catch (Exception e){
 						callbackContext.error("Error while building response object: " + e.toString());
 					}
@@ -283,7 +297,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 		}
 	}
 
-	private static JSONObject buildResponseJson (final int responseCode, final String responseBody, Map<String, List<String>> responseHeaders){
+	private static JSONObject buildResponseJson (final int responseCode, final String responseBody, Map<String, List<String>> responseHeaders) throws JSONException{
 		JSONObject responseObj = new JSONObject();
 		try {
 			responseObj.put("statusCode", responseCode);
@@ -296,12 +310,13 @@ public class PinnedHTTPS extends CordovaPlugin {
 				Map.Entry<String, List<String>> currentHeader = headersIterator.next();
 				//Skip header field if values are empty
 				if (currentHeader.getValue().size() == 0) continue;
+				if (currentHeader.getKey() == "" || currentHeader.getKey() == null) continue;
 				//Getting first values of header
 				headersObj.put(currentHeader.getKey(), currentHeader.getValue().get(0));
 			}
 			responseObj.put("headers", headersObj);
 		} catch (JSONException e){
-			return null;
+			throw e;
 		}
 		return responseObj;
 	}
