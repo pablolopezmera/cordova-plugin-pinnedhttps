@@ -29,9 +29,10 @@
 
 	<!--Android plugin-->
 	<platform name="android">
-		<config-file targer="res/xml/config.xml" parent="/*">
+		<config-file target="res/xml/config.xml" parent="/*">
 			<feature name="PinnedHTTPS">
-				<param name="android-package" value="me.lockate.plugins.pinnedhttps" />
+				<param name="android-package" value="me.lockate.plugins.PinnedHTTPS" />
+				<param name="onload" value="true"/>
 			</feature>
 		</config-file>
 		<source-file src="src/android/me/lockate/plugins/PinnedHTTPS.java" target-dir="src/me/lockate/plugins"/>

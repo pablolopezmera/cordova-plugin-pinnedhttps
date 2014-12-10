@@ -1,5 +1,7 @@
 package me.lockate.plugins;
 
+import android.util.Log;
+
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.PluginResult;
@@ -36,14 +38,16 @@ public class PinnedHTTPS extends CordovaPlugin {
 
 	private static char[] HEX_CHARS = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
+	private static String logTag = "PinnedHTTPS";
+
 	@Override
 	public boolean execute(final String method, final JSONArray args, final CallbackContext callbackContext) throws RejectedExecutionException, NullPointerException {//JSONException, IOException, NoSuchAlgorithmException{ //, CertificateException{ //, CertificateEncodingException {
 		if (method.equals("get")){
 			//Standard HTTPS GET request. Running in a new thread
 			cordova.getThreadPool().execute(new Runnable(){
 				public void run(){
-					String getUrlStr; //Request URL
-					String fingerprint; //Expected fingerprint
+					String getUrlStr = ""; //Request URL
+					String fingerprint = ""; //Expected fingerprint
 					try {
 						getUrlStr = args.getString(0);
 						fingerprint = args.getString(1);
@@ -51,6 +55,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 						callbackContext.error("Invalid method parameters");
 						return;
 					}
+					Log.v(logTag, "getUrlStr: " + getUrlStr + "\n" + "fingerprint: " + fingerprint);
 					URL getUrl;
 					try {
 						getUrl = new URL(getUrlStr);
@@ -66,9 +71,11 @@ public class PinnedHTTPS extends CordovaPlugin {
 						callbackContext.error("Cannot connect to " + getUrlStr);
 						return;
 					}
+					Log.v(logTag, "Connection instanciated");
 					//Setting up the fingerprint verification upon session negotiation
 					try {
 						conn.setUseCaches(false);
+						Log.v(logTag, "Disabled cache");
 						final String f_hostname = hostname;
 						final String f_fingerprint = fingerprint;
 						conn.setDefaultHostnameVerifier(new HostnameVerifier(){
@@ -96,18 +103,20 @@ public class PinnedHTTPS extends CordovaPlugin {
 								return dumpHex(md.digest()).equals(removeSpaces(f_fingerprint.toUpperCase())); //Fingerprint check, in itself
 							}
 						});
+						Log.v(logTag, "Hostname verifier has been set");
 					} catch (Exception e){
-						callbackContext.error("Error while setting up the conneciton");
+						callbackContext.error("Error while setting up the conneciton: " + e.toString());
 						return;
 					}
 					//Open connection and process request
 					try {
 						conn.connect();
+						Log.v(logTag, "Connection now open");
 					} catch (SocketTimeoutException e){
 						callbackContext.error("Cannot connect to " + getUrlStr + " (timeout)");
 						return;
 					} catch (IOException e){
-						callbackContext.error("Cannot connect to " + getUrlStr);
+						callbackContext.error("Cannot connect to " + getUrlStr + ": " + e.toString());
 						return;
 					}
 					try {
@@ -116,17 +125,19 @@ public class PinnedHTTPS extends CordovaPlugin {
 						BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
 						String response = "";
 						int c;
+						Log.v(logTag, "Reading response");
 						while ((c = reader.read()) != -1){
 							response += (char) c;
 						}
 						reader.close();
 						conn.disconnect();
 
+						Log.v(logTag, "Building response object");
 						JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders);
 						if (responseObj == null) callbackContext.error("Error while building response object");
 						else callbackContext.success(responseObj.toString());
 					} catch (Exception e){
-						callbackContext.error("Request failed");
+						callbackContext.error("Error while building response object: " + e.toString());
 					}
 				}
 			});
@@ -136,18 +147,20 @@ public class PinnedHTTPS extends CordovaPlugin {
 			cordova.getThreadPool().execute(new Runnable(){
 				public void run(){
 					JSONObject reqOptions;
-					String fingerprint, hostname, port, path;
+					String fingerprint = "", hostname = "", port = "", path = "", httpMethod = "";
 					try {
 						reqOptions = new JSONObject(args.getString(0));
 						fingerprint = args.getString(1);
 						hostname = reqOptions.getString("host");
 						port = reqOptions.getString("port");
 						path = reqOptions.getString("path");
+						httpMethod = reqOptions.getString("method");
 					} catch (JSONException e){
 						callbackContext.error("Invalid parameters format");
 						return;
 					}
 					String reqUrlStr = "https://" + hostname + ":" + port + path;
+					Log.v(logTag, "reqUrlStr: " + reqUrlStr + "\nMethod: " + httpMethod + "\nfingerprint: " + fingerprint);
 					URL reqUrl = initURL(reqUrlStr);
 					HttpsURLConnection conn;
 					try {
@@ -156,9 +169,10 @@ public class PinnedHTTPS extends CordovaPlugin {
 						callbackContext.error("Cannot connect to " + reqUrlStr);
 						return;
 					}
-
+					Log.v(logTag, "Connection instanciated");
 					//Append headers, if any
 					if (reqOptions.has("headers")){
+						Log.v(logTag, "Headers provided. Reading them");
 						JSONObject headers;
 						try {
 							headers = reqOptions.getJSONObject("headers");
@@ -179,8 +193,9 @@ public class PinnedHTTPS extends CordovaPlugin {
 					}
 
 					try {
-						conn.setRequestMethod(reqOptions.getString("method"));
+						conn.setRequestMethod(httpMethod);
 						conn.setUseCaches(false);
+						Log.v(logTag, "Set the HTTP method to use. Disabled cache");
 						final String f_hostname = hostname;
 						final String f_fingerprint = fingerprint;
 						conn.setDefaultHostnameVerifier(new HostnameVerifier(){
@@ -208,18 +223,20 @@ public class PinnedHTTPS extends CordovaPlugin {
 								return dumpHex(md.digest()).equals(removeSpaces(f_fingerprint.toUpperCase())); //Fingerprint check, in itself
 							}
 						});
+						Log.v(logTag, "Hostname verifier has been set");
 					} catch (Exception e){
-						callbackContext.error("Error while setting up the connection");
+						callbackContext.error("Error while setting up the connection: " + e.toString());
 						return;
 					}
 					//Open connection and process request
 					try {
 						conn.connect();
+						Log.v(logTag, "Connection is now open");
 					} catch (SocketTimeoutException e){
 						callbackContext.error("Cannot connect to " + reqUrlStr + " (timeout)");
 						return;
 					} catch (IOException e){
-						callbackContext.error("Cannot connect to " + reqUrlStr);
+						callbackContext.error("Cannot connect to " + reqUrlStr + ": " + e.toString());
 						return;
 					}
 					try {
@@ -228,17 +245,19 @@ public class PinnedHTTPS extends CordovaPlugin {
 						BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
 						String response = "";
 						int c;
+						Log.v(logTag, "Reading response");
 						while ((c = reader.read()) != -1){
 							response += (char) c;
 						}
 						reader.close();
 						conn.disconnect();
 
+						Log.v(logTag, "Building response object");
 						JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders);
 						if (responseObj == null) callbackContext.error("Cannot build reponse");
 						else callbackContext.success(responseObj.toString());
 					} catch (Exception e){
-						callbackContext.error("Error while building response object");
+						callbackContext.error("Error while building response object: " + e.toString());
 					}
 				}
 			});
