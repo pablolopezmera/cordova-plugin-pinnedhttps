@@ -28,7 +28,7 @@
 	return self;
 }
 
-/*- (void)connection: (NSURLConnection*)connection willSendRequestForAuthenticationChallenge: (NSURLAuthenticationChallenge*)challenge
+- (void)connection: (NSURLConnection*)connection willSendRequestForAuthenticationChallenge: (NSURLAuthenticationChallenge*)challenge
 {
 	NSLog(@"Cert check for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
     SecTrustRef serverCert = challenge.protectionSpace.serverTrust;
@@ -42,21 +42,21 @@
 		NSURLCredential *cred = [NSURLCredential credentialForTrust: serverCert];
 		[[challenge sender] useCredential: cred forAuthenticationChallenge: challenge];
 	} else {
-		//CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"INVALID_CERT"];
-		//[self._plugin writeJavascript:[rslt toErrorCallbackString: self._callbackId]];
+		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"INVALID_CERT"];
+		[self._plugin writeJavascript:[rslt toErrorCallbackString: self._callbackId]];
 		NSLog(@"Invalid cert for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
-		//[connection cancel];
+		[connection cancel];
 	}
-}*/
+}
 
-- (void)connection:(NSURLConnection *)connection didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
+/*- (void)connection:(NSURLConnection *)connection didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 {
     NSLog(@"Cert check for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
     SecTrustRef serverCert = challenge.protectionSpace.serverTrust;
 	NSString* connFingerprint = [self getFingerprint: SecTrustGetCertificateAtIndex(serverCert, 0)];
     self._foundFingerprint = connFingerprint;
     NSLog(@"Found fingerprint for %@ %@: %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host, connFingerprint);
-    
+
     if ([self._foundFingerprint caseInsensitiveCompare:self._fingerprint] == NSOrderedSame){
         [challenge.sender useCredential:[NSURLCredential credentialForTrust:serverCert] forAuthenticationChallenge:challenge];
     } else {
@@ -65,12 +65,11 @@
 		NSLog(@"Invalid cert for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
 		[connection cancel];
     }
-    
-}
+}*/
 
 - (BOOL)connection:(NSURLConnection *)connection canAuthenticateAgainstProtectionSpace:(NSURLProtectionSpace *)protectionSpace
 {
-    return [protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust];
+    return [[protectionSpace authenticationMethod] isEqualToString:NSURLAuthenticationMethodServerTrust];
 }
 
 - (void)connection: (NSURLConnection*)connection didFailWithError: (NSError*)error {
@@ -94,6 +93,7 @@
 }
 
 - (void)connectionDidFinishLoading:(NSURLConnection*)connection {
+	NSLog(@"End of response");
     //Append response body and pass to JS
     NSString *responseBodyStr = [[NSString alloc] initWithData: self._responseBody encoding: NSUTF8StringEncoding];
     [self._responseObj setValue: responseBodyStr forKey: @"body"];
