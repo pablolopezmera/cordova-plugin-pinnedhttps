@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.List;
 import java.util.Set;
 import java.util.Iterator;
+import java.lang.StringBuffer;
 
 import java.util.concurrent.RejectedExecutionException;
 import java.lang.NullPointerException;
@@ -25,6 +26,8 @@ import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
 import java.net.URL;
 import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
@@ -104,6 +107,12 @@ public class PinnedHTTPS extends CordovaPlugin {
 							}
 						});
 						Log.v(logTag, "Hostname verifier has been set");
+
+						TrustManager tm[] = { new HashTrust() };
+						SSLContext connContext = SSLContext.getInstance("TLS");
+						connContext.init(null, tm, null);
+						conn.setSSLSocketFactory(connContext.getSocketFactory());
+						Log.v(logTag, "Blank trust manager has been set");
 					} catch (Exception e){
 						callbackContext.error("Error while setting up the conneciton: " + e.toString());
 						return;
@@ -123,17 +132,17 @@ public class PinnedHTTPS extends CordovaPlugin {
 						int httpStatusCode = conn.getResponseCode();
 						Map<String, List<String>> responseHeaders = conn.getHeaderFields();
 						BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-						String response = "";
-						int c;
+						StringBuffer response = new StringBuffer();
+						String currentLine;
 						Log.v(logTag, "Reading response");
-						while ((c = reader.read()) != -1){
-							response += (char) c;
+						while ((currentLine = reader.readLine()) != null){
+							response.append(currentLine);
 						}
 						reader.close();
 						conn.disconnect();
 
 						Log.v(logTag, "Building response object");
-						JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders);
+						JSONObject responseObj = buildResponseJson(httpStatusCode, response.toString(), responseHeaders);
 						if (responseObj == null) callbackContext.error("Error while building response object");
 						else callbackContext.success(responseObj.toString());
 					} catch (Exception e){
@@ -193,7 +202,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 					}
 
 					try {
-						conn.setRequestMethod(httpMethod);
+						conn.setRequestMethod(httpMethod.toUpperCase());
 						conn.setUseCaches(false);
 						Log.v(logTag, "Set the HTTP method to use. Disabled cache");
 						final String f_hostname = hostname;
@@ -224,6 +233,12 @@ public class PinnedHTTPS extends CordovaPlugin {
 							}
 						});
 						Log.v(logTag, "Hostname verifier has been set");
+
+						TrustManager tm[] = { new HashTrust() };
+						SSLContext connContext = SSLContext.getInstance("TLS");
+						connContext.init(null, tm, null);
+						conn.setSSLSocketFactory(connContext.getSocketFactory());
+						Log.v(logTag, "Blank trust manager has been set");
 					} catch (Exception e){
 						callbackContext.error("Error while setting up the connection: " + e.toString());
 						return;
@@ -243,17 +258,17 @@ public class PinnedHTTPS extends CordovaPlugin {
 						int httpStatusCode = conn.getResponseCode();
 						Map<String, List<String>> responseHeaders = conn.getHeaderFields();
 						BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-						String response = "";
-						int c;
+						StringBuffer response = new StringBuffer();
+						String currentLine;
 						Log.v(logTag, "Reading response");
-						while ((c = reader.read()) != -1){
-							response += (char) c;
+						while ((currentLine = reader.readLine()) != null){
+							response.append(currentLine);
 						}
 						reader.close();
 						conn.disconnect();
 
 						Log.v(logTag, "Building response object");
-						JSONObject responseObj = buildResponseJson(httpStatusCode, response, responseHeaders);
+						JSONObject responseObj = buildResponseJson(httpStatusCode, response.toString(), responseHeaders);
 						if (responseObj == null) callbackContext.error("Cannot build reponse");
 						else callbackContext.success(responseObj.toString());
 					} catch (Exception e){

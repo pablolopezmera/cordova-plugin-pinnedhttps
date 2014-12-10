@@ -36,6 +36,7 @@
 			</feature>
 		</config-file>
 		<source-file src="src/android/me/lockate/plugins/PinnedHTTPS.java" target-dir="src/me/lockate/plugins"/>
+		<source-file src="src/android/me/lockate/plugins/HashTrust.java" target-dir="src/me/lockate/plugins"/>
 	</platform>
 
 </plugin>
