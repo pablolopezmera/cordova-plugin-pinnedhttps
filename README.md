@@ -8,12 +8,14 @@ A phonegap plugin that will allow you to make HTTPS requests with certificate fi
 
 
 ```
-phonegap plugin add https://github.com/BatikhSouri/PinnedHTTPS-Phonegap-Plugin
+phonegap plugin add https://github.com/LockateMe/PinnedHTTPS-Phonegap-Plugin
 ```
 
 ## Usage
 
-This plugin compiles and has been tested as part of an other project (a phonegap app)
+This plugin compiles and has been tested as part of an other project (a phonegap app).
+
+__NOTE:__ [There currently is an issue on iOS 7/8](http://stackoverflow.com/questions/25566647/nsurlconnectiondelegate-willsendrequestforauthenticationchallenge-wont-get-call)
 
 ```js
 var https = new navigator.httpsBuilder(fingerprintStr);
