@@ -23,6 +23,7 @@ import java.lang.NullPointerException;
 import java.io.IOException;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.DataOutputStream;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSession;
@@ -31,6 +32,7 @@ import javax.net.ssl.TrustManager;
 import java.net.URL;
 import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownServiceException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
@@ -187,6 +189,8 @@ public class PinnedHTTPS extends CordovaPlugin {
 							return;
 						}
 					}
+					//Set that I intend to use the received data
+					conn.setDoInput(true);
 
 					try {
 						conn.setRequestMethod(httpMethod.toUpperCase());
@@ -211,18 +215,51 @@ public class PinnedHTTPS extends CordovaPlugin {
 						return;
 					}
 					//Open connection and process request
-					try {
-						conn.connect();
-						Log.v(logTag, "Connection is now open");
-					} catch (SocketTimeoutException e){
-						callbackContext.error("Cannot connect to " + reqUrlStr + " (timeout)");
-						return;
-					} catch (IOException e){
-						if (e.getMessage().indexOf("INVALID_CERT") > -1) callbackContext.error("INVALID_CERT");
-						else callbackContext.error("Cannot connect to " + reqUrlStr + ": " + e.toString());
-						Log.v(logTag, "IOException:\n" + getStackTraceStr(e));
-						return;
+					//Append body, if any
+					if (reqOptions.has("body")){
+						Log.v(logTag, "Request body provided. Append it to request");
+						JSONObject body;
+						try {
+							body = reqOptions.getJSONObject("body");
+						} catch (JSONException e){
+							callbackContext.error("Invalid options.body");
+							return;
+						}
+						try {
+							conn.setDoOutput(true);
+							conn.setRequestProperty("Content-Type", "application/json");
+							String bodyString = body.toString();
+							DataOutputStream oStream = new DataOutputStream(conn.getOutputStream());
+							oStream.writeBytes(bodyString);
+							oStream.flush();
+							oStream.close();
+						} catch (SocketTimeoutException e){
+							callbackContext.error("Cannot connect to " + reqUrlStr + " (timeout)");
+							return;
+						} catch (UnknownServiceException e){
+							callbackContext.error("Unsupporeted body");
+							return;
+						} catch (IOException e){
+							if (e.getMessage().indexOf("INVALID_CERT") > -1) callbackContext.error("INVALID_CERT");
+							else callbackContext.error("Cannot connect to " + reqUrlStr + ": " + e.toString());
+							Log.v(logTag, "IOException:\n" + getStackTraceStr(e));
+							return;
+						}
+					} else { //No request body. Process request normally
+						try {
+							conn.connect();
+							Log.v(logTag, "Connection is now open");
+						} catch (SocketTimeoutException e){
+							callbackContext.error("Cannot connect to " + reqUrlStr + " (timeout)");
+							return;
+						} catch (IOException e){
+							if (e.getMessage().indexOf("INVALID_CERT") > -1) callbackContext.error("INVALID_CERT");
+							else callbackContext.error("Cannot connect to " + reqUrlStr + ": " + e.toString());
+							Log.v(logTag, "IOException:\n" + getStackTraceStr(e));
+							return;
+						}
 					}
+
 					try {
 						int httpStatusCode = conn.getResponseCode();
 						Map<String, List<String>> responseHeaders = conn.getHeaderFields();

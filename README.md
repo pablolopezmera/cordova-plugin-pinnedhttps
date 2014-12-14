@@ -35,7 +35,7 @@ https.get('https://yoursite.tld/yourpath', function(err, res){
 	}
 });
 
-var reqOptions = {method:'post', host:'yoursite.tld', path: '/yourpath', [port: 443], [headers: {header1: 'value1', header2: 'value2'}]};
+var reqOptions = {method:'post', host:'yoursite.tld', path: '/yourpath', [port: 443], [headers: {header1: 'value1', header2: 'value2'}], [body: {}]};
 
 https.request(reqOptions, function(err, res){
 	if (err){
