@@ -127,7 +127,8 @@
 	NSString *reqUrl = [command.arguments objectAtIndex:0];
 	NSString *expectedFingerprint = [command.arguments objectAtIndex:1];
     NSLog(@"get %@", reqUrl);
-	NSURLRequest *req = [NSURLRequest requestWithURL: [NSURL URLWithString: reqUrl] cachePolicy: NSURLCacheStorageNotAllowed timeoutInterval: 20.0];
+	NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL: [NSURL URLWithString: reqUrl] cachePolicy: NSURLCacheStorageNotAllowed timeoutInterval: 20.0];
+	[req setValue: @"close" forHTTPHeaderField: @"Connection"];
 	CustomURLConnectionDelegate *delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin:self callbackId: command.callbackId fingerprint: expectedFingerprint];
     NSLog(@"Finger (get) : %@", delegate._fingerprint);
 
@@ -163,7 +164,7 @@
     NSURL *reqUrl = [NSURL URLWithString: [NSString stringWithFormat:@"https://%@:%@%@", [options objectForKey:@"host"], [options objectForKey:@"port"], [options objectForKey:@"path"]]];
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:reqUrl cachePolicy: NSURLCacheStorageNotAllowed timeoutInterval: 20.0];
     req.HTTPMethod = [method uppercaseString];
-
+	[req setValue: @"close" forHTTPHeaderField: @"Connection"];
     NSDictionary *headers = [options objectForKey:@"headers"];
     if (headers != nil){
         NSArray *headersList = headers.allKeys;
