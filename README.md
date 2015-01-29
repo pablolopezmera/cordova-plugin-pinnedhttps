@@ -18,7 +18,8 @@ This plugin compiles and has been tested as part of an other project (a phonegap
 __NOTE:__ [There currently is an issue on iOS 7/8](http://stackoverflow.com/questions/25566647/nsurlconnectiondelegate-willsendrequestforauthenticationchallenge-wont-get-call)
 
 ```js
-var https = new navigator.httpsBuilder(fingerprintStr);
+// The `fingerprints` parameter must either be a string or an array of strings; each string must be an SHA1 hash
+var https = new navigator.httpsBuilder(fingerprints);
 
 https.get('https://yoursite.tld/yourpath', function(err, res){
 	if (err){
