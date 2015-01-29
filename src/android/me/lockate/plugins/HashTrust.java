@@ -3,6 +3,7 @@ package me.lockate.plugins;
 import android.util.Log;
 
 import java.lang.IllegalArgumentException;
+import java.util.*;
 
 import java.security.KeyStore;
 import java.security.cert.CertificateException;
@@ -21,11 +22,14 @@ public final class HashTrust implements X509TrustManager {
 	private static char[] HEX_CHARS = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 	private final static String logTag = "PinnedHTTPS";
 
-	private String _expectedFingerprint;
+	private List<String> _expectedFingerprints;
 
-	public HashTrust(String expectedFingerprint){
-		if (expectedFingerprint == null || expectedFingerprint.length() == 0) throw new IllegalArgumentException("Excepted fingerprint cannot be null");
-		_expectedFingerprint = removeSpaces(expectedFingerprint);
+	public HashTrust(List<String> fingerprints){
+		if (fingerprints == null || fingerprints.size() == 0) throw new IllegalArgumentException("Excepted fingerprints list cannot be null");
+		for (int i = 0; i < fingerprints.size(); i++){
+			fingerprints.set(i, removeSpaces(fingerprints.get(i)));
+		}
+		_expectedFingerprints = fingerprints;
 	}
 
 	public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException{
@@ -52,8 +56,17 @@ public final class HashTrust implements X509TrustManager {
 
 		String foundFingerprint = dumpHex(md.digest());
 		Log.v(logTag, "Found fingerprint:\t" + foundFingerprint);
-		Log.v(logTag, "Excepted fingerprint:\t" + _expectedFingerprint);
-		if (!foundFingerprint.equalsIgnoreCase(_expectedFingerprint)) throw new CertificateException("INVALID_CERT");
+
+		boolean isValid = false;
+
+		for (int i = 0; i < _expectedFingerprints.size(); i++){
+			if (foundFingerprint.equalsIgnoreCase(_expectedFingerprints.get(i))){
+				isValid = true;
+				break;
+			}
+		}
+
+		if (!isValid) throw new CertificateException("INVALID_CERT");
 	}
 
 	public void checkClientTrusted(X509Certificate[] chain, String authType){

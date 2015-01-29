@@ -50,15 +50,21 @@ public class PinnedHTTPS extends CordovaPlugin {
 			cordova.getThreadPool().execute(new Runnable(){
 				public void run(){
 					String getUrlStr = ""; //Request URL
-					String fingerprint = ""; //Expected fingerprint
+					String fingerprintsArrayStr = ""; //Expected fingerprints
+					JSONArray fingerprintsJson;
+					List<String> fringerprints = new LinkedList<String>();
 					try {
 						getUrlStr = args.getString(0);
-						fingerprint = args.getString(1);
+						fingerprintsArrayStr = args.getString(1);
+						fingerprintsJson = new JSONArray(fingerprintsArrayStr);
+						for (int i = 0; i < fingerprintsJson.length(); i++) fingerprints.add(fingerprintsJson.getString(i));
 					} catch (JSONException e){
 						callbackContext.error("Invalid method parameters");
 						return;
 					}
-					Log.v(logTag, "getUrlStr: " + getUrlStr + "\n" + "fingerprint: " + fingerprint);
+
+					Log.v(logTag, "getUrlStr: " + getUrlStr + "\n" + "fingerprints: " + fingerprintsArrayStr);
+
 					URL getUrl;
 					try {
 						getUrl = new URL(getUrlStr);
@@ -80,7 +86,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 						conn.setUseCaches(false);
 						Log.v(logTag, "Disabled cache");
 
-						TrustManager tm[] = { new HashTrust(fingerprint) };
+						TrustManager tm[] = { new HashTrust(fingerprints) };
 						SSLContext connContext = SSLContext.getInstance("TLS");
 						connContext.init(null, tm, null);
 						conn.setSSLSocketFactory(connContext.getSocketFactory());
@@ -145,20 +151,26 @@ public class PinnedHTTPS extends CordovaPlugin {
 			cordova.getThreadPool().execute(new Runnable(){
 				public void run(){
 					JSONObject reqOptions;
-					String fingerprint = "", hostname = "", port = "", path = "", httpMethod = "";
+					String fingerprintsArrayStr = "", hostname = "", port = "", path = "", httpMethod = "";
+					JSONArray fingerprintsJson;
+					List<String> fingerprints = new LinkedList<String>();
 					try {
 						reqOptions = new JSONObject(args.getString(0));
-						fingerprint = args.getString(1);
 						hostname = reqOptions.getString("host");
 						port = reqOptions.getString("port");
 						path = reqOptions.getString("path");
 						httpMethod = reqOptions.getString("method");
+
+						fingerprintsArrayStr = args.getString(1);
+						fingerprintsJson = new JSONArray(fingerprintsArrayStr);
+						for (int i = 0; i < fingerprintsJson.length(); i++) fingerprints.add(fingerprintsJson.getString(i));
 					} catch (JSONException e){
 						callbackContext.error("Invalid parameters format");
 						return;
 					}
+
 					String reqUrlStr = "https://" + hostname + ":" + port + path;
-					Log.v(logTag, "reqUrlStr: " + reqUrlStr + "\nMethod: " + httpMethod + "\nfingerprint: " + fingerprint);
+					Log.v(logTag, "reqUrlStr: " + reqUrlStr + "\nMethod: " + httpMethod + "\nfingerprints: " + fingerprintsArrayStr);
 					URL reqUrl = initURL(reqUrlStr);
 					HttpsURLConnection conn;
 					try {
@@ -197,7 +209,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 						conn.setUseCaches(false);
 						Log.v(logTag, "Set the HTTP method to use. Disabled cache");
 
-						TrustManager tm[] = { new HashTrust(fingerprint) };
+						TrustManager tm[] = { new HashTrust(fingerprints) };
 						SSLContext connContext = SSLContext.getInstance("TLS");
 						connContext.init(null, tm, null);
 						conn.setSSLSocketFactory(connContext.getSocketFactory());

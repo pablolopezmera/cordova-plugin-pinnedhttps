@@ -1,19 +1,26 @@
 "use strict";
 var exec = require('cordova/exec');
 
-function PinnedHTTPS(expectedFingerprint){
-	if (typeof expectedFingerprint != 'string') throw new TypeError('expectedFingerprint must be a string');
-	expectedFingerprint = expectedFingerprint.trim().replace(/ +/g, '').toLowerCase();
-	//console.log('Expected fingerprint: ' + expectedFingerprint);
-	if (!isSHA1(expectedFingerprint)) throw new TypeError('invalid expectedFingerprint. Must be an SHA1 fingerprint');
-	this.fingerprint = expectedFingerprint
+function PinnedHTTPS(expectedFingerprints){
+	if (!(typeof expectedFingerprints == 'string' || Array.isArray(expectedFingerprints))) throw new TypeError('expectedFingerprints must either be a string or an array of strings');
+
+	if (typeof expectedFingerprints == 'string') expectedFingerprints = [expectedFingerprints];
+
+	for (var i = 0; i < expectedFingerprints.length; i++){
+		expectedFingerprints[i] = expectedFingerprints[i].trim().replace(/ +/g, '').toLowerCase();
+		if (!isSHA1(expectedFingerprints[i])) throw new TypeError('invalid fingerprint ' + expectedFingerprints[i]);
+	}
+
+	this._fingerprints = expectedFingerprints;
 }
 
 PinnedHTTPS.prototype.get = function(url, callback){
 	if (typeof url != 'string') throw new TypeError('url must be a string');
 	if (typeof callback != 'function') throw new TypeError('callback must be a function');
 
-	cordova.exec(responseHandler, errorHandler, 'PinnedHTTPS', 'get', [url, this.fingerprint]);
+	var cordovaParams = [url, JSON.stringify(this._fingerprints)];
+
+	cordova.exec(responseHandler, errorHandler, 'PinnedHTTPS', 'get', cordovaParams);
 
 	function responseHandler(responseObj){
 		if (typeof responseObj == 'string') responseObj = JSON.parse(responseObj);
@@ -45,7 +52,9 @@ PinnedHTTPS.prototype.request = function(options, callback){
 		}
 	}
 
-	cordova.exec(responseHandler, errorHandler, 'PinnedHTTPS', 'req', [JSON.stringify(options), this.fingerprint]);
+	var cordovaParams = [JSON.stringify(options), JSON.stringify(this._fingerprints)];
+
+	cordova.exec(responseHandler, errorHandler, 'PinnedHTTPS', 'req', cordovaParams);
 
 	function responseHandler(responseObj){
 		if (typeof responseObj == 'string') responseObj = JSON.parse(responseObj);
