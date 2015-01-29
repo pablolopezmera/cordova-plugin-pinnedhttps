@@ -30,9 +30,9 @@ https.get('https://yoursite.tld/yourpath', function(err, res){
 			//Other kinds of connection errors. Messages are more "human friendly"
 		}
 	} else {
-		res.statusCode
-		res.headers
-		res.body
+		res.statusCode //Number
+		res.headers //Object
+		res.body //String
 	}
 });
 
@@ -47,9 +47,9 @@ https.request(reqOptions, function(err, res){
 			//Other kinds of connection errors. Messages are more "human friendly"
 		}
 	} else {
-		res.statusCode
-		res.headers
-		res.body
+		res.statusCode //Number
+		res.headers //Object
+		res.body //String
 	}
 });
 ```
