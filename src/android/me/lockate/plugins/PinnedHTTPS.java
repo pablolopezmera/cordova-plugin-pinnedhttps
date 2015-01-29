@@ -12,6 +12,7 @@ import org.json.JSONException;
 
 import java.util.Map;
 import java.util.List;
+import java.util.LinkedList;
 import java.util.Set;
 import java.util.Iterator;
 import java.lang.StringBuffer;
@@ -52,7 +53,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 					String getUrlStr = ""; //Request URL
 					String fingerprintsArrayStr = ""; //Expected fingerprints
 					JSONArray fingerprintsJson;
-					List<String> fringerprints = new LinkedList<String>();
+					List<String> fingerprints = new LinkedList<String>();
 					try {
 						getUrlStr = args.getString(0);
 						fingerprintsArrayStr = args.getString(1);

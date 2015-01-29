@@ -7,24 +7,24 @@
 
 @property (strong, nonatomic) CDVPlugin *_plugin;
 @property (strong, nonatomic) NSString *_callbackId;
-@property (strong, nonatomic) NSString *_fingerprint;
+@property (strong, nonatomic) NSArray *_fingerprints;
 @property (nonatomic, assign) BOOL validFingerprint;
 @property (retain) NSMutableData *_responseBody;
 @property (retain) NSMutableDictionary *_responseObj;
 @property (retain) NSString *_foundFingerprint;
 
-- (id)initWithPlugin:(CDVPlugin*)plugin callbackId:(NSString*)callbackId fingerprint:(NSString*)fingerprint;
+- (id)initWithPlugin:(CDVPlugin*)plugin callbackId:(NSString*)callbackId fingerprints:(NSArray*)fingerprints;
 
 @end
 
 @implementation CustomURLConnectionDelegate
 
-- (id)initWithPlugin:(CDVPlugin*)plugin callbackId:(NSString*)callbackId fingerprint:(NSString*)fingerprint
+- (id)initWithPlugin:(CDVPlugin*)plugin callbackId:(NSString*)callbackId fingerprints:(NSArray*)fingerprints
 {
 	self.validFingerprint = false;
 	self._plugin = plugin;
 	self._callbackId = callbackId;
-	self._fingerprint = fingerprint;
+	self._fingerprints = fingerprints;
 	return self;
 }
 
@@ -36,7 +36,16 @@
     self._foundFingerprint = connFingerprint;
     NSLog(@"Found fingerprint for %@ %@: %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host, connFingerprint);
 
-	if ([connFingerprint caseInsensitiveCompare: self._fingerprint] == NSOrderedSame){
+	bool isValid = false;
+
+	for (int i = 0; i < self._fingerprints.count; i++){
+		if ([connFingerprint caseInsensitiveCompare: [self._fingerprints objectAtIndex: i]] == NSOrderedSame){
+			isValid = true;
+			break;
+		}
+	}
+
+	if (isValid){
 		self.validFingerprint = true;
 		NSLog(@"Valid cert for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
 		NSURLCredential *cred = [NSURLCredential credentialForTrust: serverCert];
@@ -125,12 +134,26 @@
 
 - (void)get:(CDVInvokedUrlCommand*)command {
 	NSString *reqUrl = [command.arguments objectAtIndex:0];
-	NSString *expectedFingerprint = [command.arguments objectAtIndex:1];
+	NSString *expectedFingerprintsStr = [command.arguments objectAtIndex:1];
+
+	//Parsing the expected fingerprints list
+	NSData *fingerprintsJsonData = [expectedFingerprintsStr dataUsingEncoding:NSUTF8StringEncoding];
+	NSError *fingerprintsJsonErr;
+	id expectedFingerprintsPt = [NSJSONSerialization JSONObjectWithData:fingerprintsJsonData options:NSJSONReadingMutableContainers|NSJSONReadingMutableLeaves error:&fingerprintsJsonErr];
+
+	if (fingerprintsJsonErr != nil || ![expectedFingerprintsPt isKindOfClass: [NSArray class]]){
+		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString:@"invalid JSON for expectedFingerprints array"];
+		[self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
+		return;
+	}
+
+	NSArray *expectedFingerprints = expectedFingerprintsPt;
+
     NSLog(@"get %@", reqUrl);
 	NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL: [NSURL URLWithString: reqUrl] cachePolicy: NSURLCacheStorageNotAllowed timeoutInterval: 20.0];
 	[req setValue: @"close" forHTTPHeaderField: @"Connection"];
-	CustomURLConnectionDelegate *delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin:self callbackId: command.callbackId fingerprint: expectedFingerprint];
-    NSLog(@"Finger (get) : %@", delegate._fingerprint);
+	CustomURLConnectionDelegate *delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin:self callbackId: command.callbackId fingerprints: expectedFingerprints];
+    NSLog(@"Finger (get) : %@", expectedFingerprintsStr);
 
 	NSURLConnection *connection = [[NSURLConnection alloc] initWithRequest: req delegate: delegate];
 	if (!connection){
@@ -142,8 +165,8 @@
 
 - (void)req:(CDVInvokedUrlCommand*)command {
     NSString *optionsJsonStr = [command.arguments objectAtIndex:0];
-    NSString *expectedFingerprint = [command.arguments objectAtIndex:1];
-    NSLog(@"Finger: %@", expectedFingerprint);
+    NSString *expectedFingerprintsStr = [command.arguments objectAtIndex:1];
+    NSLog(@"Finger: %@", expectedFingerprintsStr);
     //Parsing the options dictionary
     NSData *jsonData = [optionsJsonStr dataUsingEncoding:NSUTF8StringEncoding];
     NSError *jsonErr;
@@ -154,6 +177,19 @@
         [self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
         return;
     }
+
+	//Parsing the expected fingerprints list
+	NSData *fingerprintsJsonData = [expectedFingerprintsStr dataUsingEncoding:NSUTF8StringEncoding];
+	NSError *fingerprintsJsonErr;
+	id expectedFingerprintsPt = [NSJSONSerialization JSONObjectWithData:fingerprintsJsonData options:NSJSONReadingMutableContainers|NSJSONReadingMutableLeaves error:&fingerprintsJsonErr];
+
+	if (fingerprintsJsonErr != nil || ![expectedFingerprintsPt isKindOfClass: [NSArray class]]){
+		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString:@"invalid JSON for fingerprints array"];
+		[self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
+		return;
+	}
+
+	NSArray *expectedFingerprints = expectedFingerprintsPt;
 
     NSString *method = [options objectForKey:@"method"];
     if (!([method isEqual:@"get"] || [method isEqual:@"post"] || [method isEqual:@"delete"] || [method isEqual:@"put"] || [method isEqual:@"head"] || [method isEqual:@"options"] || [method isEqual:@"patch"] || [method isEqual:@"trace"] || [method isEqual:@"connect"])){
@@ -198,7 +234,7 @@
 		}
     }
 
-    CustomURLConnectionDelegate* delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin: self callbackId: command.callbackId fingerprint: expectedFingerprint];
+    CustomURLConnectionDelegate* delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin: self callbackId: command.callbackId fingerprints: expectedFingerprints];
     NSURLConnection *connection = [[NSURLConnection alloc] initWithRequest: req delegate: delegate];
 
     if(!connection){
