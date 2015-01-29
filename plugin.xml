@@ -2,7 +2,7 @@
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android" id="me.lockate.plugins.pinnedhttps" version="0.1.0">
 	<name>Pinned HTTPS request</name>
 	<description>
-		This plugin allows you to make a certificate check before sending an HTTPS request (on the same connection) in order to dodge MITM attacks. For iOS and Android
+		This plugin allows you to make a hash-based certificate check before sending an HTTPS request (on the same connection) in order to dodge MITM attacks. For iOS and Android
 	</description>
 
 	<license>MIT</license>
