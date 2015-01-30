@@ -60,7 +60,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 						fingerprintsJson = new JSONArray(fingerprintsArrayStr);
 						for (int i = 0; i < fingerprintsJson.length(); i++) fingerprints.add(fingerprintsJson.getString(i));
 					} catch (JSONException e){
-						callbackContext.error("Invalid method parameters");
+						callbackContext.error("INVALID_PARAMS");
 						return;
 					}
 
@@ -70,7 +70,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 					try {
 						getUrl = new URL(getUrlStr);
 					} catch (MalformedURLException e){
-						callbackContext.error("Invalid URL format");
+						callbackContext.error("INVALID_URL");
 						return;
 					}
 					final String hostname = getUrl.getHost(); //Getting hostname from URL
@@ -78,7 +78,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 					try {
 						conn = (HttpsURLConnection) getUrl.openConnection();
 					} catch (IOException e){
-						callbackContext.error("Cannot connect to " + getUrlStr);
+						callbackContext.error("CANT_CONNECT");
 						return;
 					}
 					Log.v(logTag, "Connection instanciated");
@@ -101,7 +101,8 @@ public class PinnedHTTPS extends CordovaPlugin {
 						Log.v(logTag, "Blank hostname verifier has been set");
 
 					} catch (Exception e){
-						callbackContext.error("Error while setting up the conneciton: " + e.toString());
+						Log.v(logTag, "Error while setting up the conneciton: " + e.toString());
+						callbackContext.error("CANT_CONNECT");
 						return;
 					}
 					//Open connection and process request
@@ -109,11 +110,12 @@ public class PinnedHTTPS extends CordovaPlugin {
 						conn.connect();
 						Log.v(logTag, "Connection now open");
 					} catch (SocketTimeoutException e){
-						callbackContext.error("Cannot connect to " + getUrlStr + " (timeout)");
+						//callbackContext.error("Cannot connect to " + getUrlStr + " (timeout)");
+						callbackContext.error("TIMEOUT");
 						return;
 					} catch (IOException e){
 						if (e.getMessage().indexOf("INVALID_CERT") > -1) callbackContext.error("INVALID_CERT");
-						else callbackContext.error("Cannot connect to " + getUrlStr + ": " + e.toString());
+						else callbackContext.error("CANT_CONNECT");
 						Log.v(logTag, "IOException:\n" + getStackTraceStr(e));
 						return;
 					}
@@ -135,14 +137,16 @@ public class PinnedHTTPS extends CordovaPlugin {
 						try {
 							responseObj = buildResponseJson(httpStatusCode, response.toString(), responseHeaders);
 						} catch (JSONException e){
-							callbackContext.error("Error while building response object: " + e.toString());
+							callbackContext.error("INTERNAL_ERROR");
+							Log.v(logTag, "Error while building response object: " + e.toString());
 							return;
 						}
-						if (responseObj == null) callbackContext.error("Error while building response object");
+						if (responseObj == null) callbackContext.error("INTERNAL_ERROR");
 						else callbackContext.success(responseObj.toString());
 						Log.v(logTag, "End of get");
 					} catch (Exception e){
-						callbackContext.error("Error while building response object: " + e.toString());
+						callbackContext.error("INTERNAL_ERROR");
+						//callbackContext.error("Error while building response object: " + e.toString());
 					}
 				}
 			});
@@ -166,7 +170,13 @@ public class PinnedHTTPS extends CordovaPlugin {
 						fingerprintsJson = new JSONArray(fingerprintsArrayStr);
 						for (int i = 0; i < fingerprintsJson.length(); i++) fingerprints.add(fingerprintsJson.getString(i));
 					} catch (JSONException e){
-						callbackContext.error("Invalid parameters format");
+						callbackContext.error("INVALID_PARAMS");
+						return;
+					}
+
+					httpMethod = httpMethod.toUpperCase();
+					if (!(httpMethod.equals("GET") || httpMethod.equals("POST") || httpMethod.equals("DELETE") || httpMethod.equals("PUT") || httpMethod.equals("HEAD") || httpMethod.equals("OPTIONS") || httpMethod.equals("PATCH") || httpMethod.equals("TRACE") || httpMethod.equals("CONNECT"))){
+						callbackContext.error("INVALID_METHOD");
 						return;
 					}
 
@@ -177,7 +187,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 					try {
 						conn = (HttpsURLConnection) reqUrl.openConnection();
 					} catch (IOException e){
-						callbackContext.error("Cannot connect to " + reqUrlStr);
+						callbackContext.error("CANT_CONNECT");
 						return;
 					}
 					Log.v(logTag, "Connection instanciated");
@@ -188,7 +198,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 						try {
 							headers = reqOptions.getJSONObject("headers");
 						} catch (JSONException e){
-							callbackContext.error("Invalid options.headers");
+							callbackContext.error("INVALID_HEADERS");
 							return;
 						}
 						try {
@@ -198,7 +208,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 								conn.addRequestProperty(currentHeaderName, headers.getString(currentHeaderName));
 							}
 						} catch (Exception e){
-							callbackContext.error("Error while appending headers to request");
+							callbackContext.error("INTERNAL_ERROR");
 							return;
 						}
 					}
@@ -206,7 +216,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 					conn.setDoInput(true);
 
 					try {
-						conn.setRequestMethod(httpMethod.toUpperCase());
+						conn.setRequestMethod(httpMethod);
 						conn.setUseCaches(false);
 						Log.v(logTag, "Set the HTTP method to use. Disabled cache");
 
@@ -224,7 +234,8 @@ public class PinnedHTTPS extends CordovaPlugin {
 						Log.v(logTag, "Blank hostname verifier has been set");
 
 					} catch (Exception e){
-						callbackContext.error("Error while setting up the connection: " + e.toString());
+						callbackContext.error("CANT_CONNECT");
+						Log.v(logTag, "Error while setting up the connection: " + e.toString());
 						return;
 					}
 					//Open connection and process request
@@ -235,7 +246,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 						try {
 							body = reqOptions.getJSONObject("body");
 						} catch (JSONException e){
-							callbackContext.error("Invalid options.body");
+							callbackContext.error("INVALID_BODY");
 							return;
 						}
 						try {
@@ -247,14 +258,15 @@ public class PinnedHTTPS extends CordovaPlugin {
 							oStream.flush();
 							oStream.close();
 						} catch (SocketTimeoutException e){
-							callbackContext.error("Cannot connect to " + reqUrlStr + " (timeout)");
+							callbackContext.error("TIMEOUT");
 							return;
 						} catch (UnknownServiceException e){
-							callbackContext.error("Unsupporeted body");
+							Log.v(logTag, "Unsupported body");
+							callbackContext.error("INTERNAL_ERROR");
 							return;
 						} catch (IOException e){
 							if (e.getMessage().indexOf("INVALID_CERT") > -1) callbackContext.error("INVALID_CERT");
-							else callbackContext.error("Cannot connect to " + reqUrlStr + ": " + e.toString());
+							else callbackContext.error("CANT_CONNECT");
 							Log.v(logTag, "IOException:\n" + getStackTraceStr(e));
 							return;
 						}
@@ -263,11 +275,11 @@ public class PinnedHTTPS extends CordovaPlugin {
 							conn.connect();
 							Log.v(logTag, "Connection is now open");
 						} catch (SocketTimeoutException e){
-							callbackContext.error("Cannot connect to " + reqUrlStr + " (timeout)");
+							callbackContext.error("TIMEOUT");
 							return;
 						} catch (IOException e){
 							if (e.getMessage().indexOf("INVALID_CERT") > -1) callbackContext.error("INVALID_CERT");
-							else callbackContext.error("Cannot connect to " + reqUrlStr + ": " + e.toString());
+							else callbackContext.error("TIMEOUT");
 							Log.v(logTag, "IOException:\n" + getStackTraceStr(e));
 							return;
 						}
@@ -291,14 +303,16 @@ public class PinnedHTTPS extends CordovaPlugin {
 						try {
 							responseObj = buildResponseJson(httpStatusCode, response.toString(), responseHeaders);
 						} catch (JSONException e){
-							callbackContext.error("Error while building response object: " + e.toString());
+							callbackContext.error("INTERNAL_ERROR");
+							Log.v(logTag, "Error while building response object: " + e.toString());
 							return;
 						}
-						if (responseObj == null) callbackContext.error("Cannot build reponse");
+						if (responseObj == null) callbackContext.error("INTERNAL_ERROR");
 						else callbackContext.success(responseObj.toString());
 						Log.v(logTag, "End of req");
 					} catch (Exception e){
-						callbackContext.error("Error while building response object: " + e.toString());
+						Log.v(logTag, "Error while building response object: " + e.toString());
+						callbackContext.error("INTERNAL_ERROR");
 					}
 				}
 			});

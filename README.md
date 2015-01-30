@@ -27,7 +27,7 @@ https.get('https://yoursite.tld/yourpath', function(err, res){
 		if (err == 'INVALID_CERT'){
 			//Certificate found on server doesn't match the provided fingerprint
 		} else {
-			//Other kinds of connection errors. Messages are more "human friendly"
+			//Other kinds of connection errors. Error messages are listed below
 		}
 	} else {
 		res.statusCode //Number
@@ -44,7 +44,7 @@ https.request(reqOptions, function(err, res){
 		if (err == 'INVALID_CERT'){
 			//Certificate found on server doesn't match the provided fingerprint
 		} else {
-			//Other kinds of connection errors. Messages are more "human friendly"
+			//Other kinds of connection errors. Error messages are listed below
 		}
 	} else {
 		res.statusCode //Number
@@ -53,3 +53,18 @@ https.request(reqOptions, function(err, res){
 	}
 });
 ```
+
+## List of error messages
+
+
+Error message	| Meaning
+----------------|------------------------------------
+`INVALID_PARAMS`| Invalid parameters
+`INVALID_URL`	| Invalid URL
+`INVALID_METHOD`| Invalid HTTP method
+`INVALID_HEADERS`| Invalid `options.headers` parameter
+`INVALID_BODY`	| Invalid `options.body` parameter
+`INVALID_CERT`	| Invalid certificate found on server
+`CANT_CONNECT`	| Can't connect to the server
+`TIMEOUT`		| Connection timeout
+`INTERNAL_ERROR`| Internal error
