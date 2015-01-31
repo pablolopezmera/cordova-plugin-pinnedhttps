@@ -122,7 +122,9 @@ public class PinnedHTTPS extends CordovaPlugin {
 					try {
 						int httpStatusCode = conn.getResponseCode();
 						Map<String, List<String>> responseHeaders = conn.getHeaderFields();
-						BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+						BufferedReader reader;
+						if (httpStatusCode >= 400) reader = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+						else reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
 						StringBuffer response = new StringBuffer();
 						String currentLine;
 						Log.v(logTag, "Reading response");
@@ -141,11 +143,15 @@ public class PinnedHTTPS extends CordovaPlugin {
 							Log.v(logTag, "Error while building response object: " + e.toString());
 							return;
 						}
-						if (responseObj == null) callbackContext.error("INTERNAL_ERROR");
-						else callbackContext.success(responseObj.toString());
+						if (responseObj == null) {
+							callbackContext.error("INTERNAL_ERROR");
+							Log.v(logTag, "responseObj is null");
+						} else callbackContext.success(responseObj.toString());
 						Log.v(logTag, "End of get");
 					} catch (Exception e){
-						callbackContext.error("INTERNAL_ERROR");
+						if (e.getMessage().indexOf("INVALID_CERT") > -1) callbackContext.error("INVALID_CERT");
+						else callbackContext.error("INTERNAL_ERROR");
+						Log.v(logTag, "Internal error: " + getStackTraceStr(e));
 						//callbackContext.error("Error while building response object: " + e.toString());
 					}
 				}
@@ -288,7 +294,9 @@ public class PinnedHTTPS extends CordovaPlugin {
 					try {
 						int httpStatusCode = conn.getResponseCode();
 						Map<String, List<String>> responseHeaders = conn.getHeaderFields();
-						BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+						BufferedReader reader;
+						if (httpStatusCode >= 400) reader = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+						else reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
 						StringBuffer response = new StringBuffer();
 						String currentLine;
 						Log.v(logTag, "Reading response");
@@ -307,8 +315,10 @@ public class PinnedHTTPS extends CordovaPlugin {
 							Log.v(logTag, "Error while building response object: " + e.toString());
 							return;
 						}
-						if (responseObj == null) callbackContext.error("INTERNAL_ERROR");
-						else callbackContext.success(responseObj.toString());
+						if (responseObj == null) {
+							callbackContext.error("INTERNAL_ERROR");
+							Log.v(logTag, "responseObj is null");
+						} else callbackContext.success(responseObj.toString());
 						Log.v(logTag, "End of req");
 					} catch (Exception e){
 						Log.v(logTag, "Error while building response object: " + e.toString());
