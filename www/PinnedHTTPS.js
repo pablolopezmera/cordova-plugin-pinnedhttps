@@ -11,57 +11,59 @@ function PinnedHTTPS(expectedFingerprints){
 		if (!isSHA1(expectedFingerprints[i])) throw new TypeError('invalid fingerprint ' + expectedFingerprints[i]);
 	}
 
-	this._fingerprints = expectedFingerprints;
-}
+	this.getFingerprints = function(){ return expectedFingerprints; };
 
-PinnedHTTPS.prototype.get = function(url, callback){
-	if (typeof url != 'string') throw new TypeError('url must be a string');
-	if (typeof callback != 'function') throw new TypeError('callback must be a function');
+	this.get = function(url, callback){
+		if (typeof url != 'string') throw new TypeError('url must be a string');
+		if (typeof callback != 'function') throw new TypeError('callback must be a function');
 
-	var cordovaParams = [url, JSON.stringify(this._fingerprints)];
+		var cordovaParams = [url, JSON.stringify(expectedFingerprints)];
 
-	cordova.exec(responseHandler, errorHandler, 'PinnedHTTPS', 'get', cordovaParams);
+		cordova.exec(responseHandler, errorHandler, 'PinnedHTTPS', 'get', cordovaParams);
 
-	function responseHandler(responseObj){
-		if (typeof responseObj == 'string') responseObj = JSON.parse(responseObj);
-		callback(null, responseObj);
-	}
-	function errorHandler(errObj){
-		callback(errObj);
-	}
-};
-
-PinnedHTTPS.prototype.request = function(options, callback){
-	if (typeof options != 'object') throw new TypeError('options must be an object');
-	if (typeof callback != 'function') throw new TypeError('callback must be a function');
-
-	//Checking the mandatory fields of options
-	if (typeof options.host != 'string') throw new TypeError('options.host must be a defined string');
-	if (typeof options.port == 'number'){
-		if (!(options.port > 0 && Math.floor(options.port) == options.port)) throw new TypeError('when defined, port must be a stricly positive integer');
-	} else options.port = 443;
-	if (options.method){
-		if (typeof options.method != 'string') throw new TypeError('when defined, options.method must be a string');
-	} else options.method = 'get';
-	if (options.headers){
-		if (typeof options.headers != 'object') throw new TypeError('when defined, options.headers must be an object');
-		var headerKeys = Object.keys(options.headers);
-		for (var i = 0; i < headerKeys.length; i++){
-			var currentHeaderType = typeof options.headers[headerKeys[i]];
-			if (!(currentHeaderType == 'string' || currentHeaderType == 'number' || currentHeaderType == 'boolean')) throw new TypeError('when defined, options.headers must contain either strings, numbers or booleans');
+		function responseHandler(responseObj){
+			if (typeof responseObj == 'string') responseObj = JSON.parse(responseObj);
+			callback(null, responseObj);
 		}
-	}
 
-	var cordovaParams = [JSON.stringify(options), JSON.stringify(this._fingerprints)];
+		function errorHandler(errObj){
+			callback(errObj);
+		}
+	};
 
-	cordova.exec(responseHandler, errorHandler, 'PinnedHTTPS', 'req', cordovaParams);
+	this.request = function(options, callback){
+		if (typeof options != 'object') throw new TypeError('options must be an object');
+		if (typeof callback != 'function') throw new TypeError('callback must be a function');
 
-	function responseHandler(responseObj){
-		if (typeof responseObj == 'string') responseObj = JSON.parse(responseObj);
-		callback(null, responseObj);
-	}
-	function errorHandler(errObj){
-		callback(errObj);
+		//Checking mandatory field of options
+		if (typeof options.host != 'string') throw new TypeError('options.host must be a defined string');
+		if (typeof options.port == 'number'){
+			if (!(options.port > 0 && Math.floor(options.port) == options.port)) throw new TypeError('when defined, port must be a strictly positive integer');
+		} else options.port = 443;
+		if (options.method){
+			if (typeof options.method != 'string') throw new TypeError('when defined, options.method must be a string');
+		} else options.method = 'get';
+		if (options.headers){
+			if (typeof options.headers != 'object') throw new TypeError('when defined, options.headers must be an object');
+			var headerKeys = Object.keys(options.headers);
+			for (var i = 0; i < headerKeys.length; i++){
+				var currentHeaderType = typeof options.headers[headerKeys[i]];
+				if (!(currentHeaderType == 'string' || currentHeaderType == 'number' && currentHeaderType == 'boolean')) throw new TypeError('when defined, options.headers must only contain values of types strings, numbers or booleans');
+			}
+		}
+
+		var cordovaParams = [JSON.stringify(options), JSON.stringify(expectedFingerprints)];
+
+		cordova.exec(responseHandler, errorHandler, 'PinnedHTTPS', 'req', cordovaParams);
+
+		function responseHandler(responseObj){
+			if (typeof responseObj == 'string') responseObj = JSON.parse(responseObj);
+			callback(null, responseObj);
+		}
+
+		function errorHandler(errObj){
+			callback(errObj);
+		}
 	}
 }
 
