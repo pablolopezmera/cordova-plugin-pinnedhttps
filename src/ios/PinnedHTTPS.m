@@ -81,6 +81,11 @@
     return [[protectionSpace authenticationMethod] isEqualToString:NSURLAuthenticationMethodServerTrust];
 }
 
+- (NSCachedURLResponse*)connection: (NSURLConnection*)connection willCacheResponse: (NSCachedURLResponse*)cachedResponse
+{
+	return nil;
+}
+
 - (void)connection: (NSURLConnection*)connection didFailWithError: (NSError*)error {
 	//[self._responseBody release];
 	//[connection release];
@@ -164,7 +169,7 @@
 	NSArray *expectedFingerprints = expectedFingerprintsPt;
 
     NSLog(@"get %@", reqUrl);
-	NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL: [NSURL URLWithString: reqUrl] cachePolicy: NSURLCacheStorageNotAllowed timeoutInterval: 20.0];
+	NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL: [NSURL URLWithString: reqUrl] cachePolicy: NSURLRequestReloadIgnoringCacheData timeoutInterval: 20.0];
 	[req setValue: @"close" forHTTPHeaderField: @"Connection"];
 	CustomURLConnectionDelegate *delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin:self callbackId: command.callbackId fingerprints: expectedFingerprints];
     NSLog(@"Finger (get) : %@", expectedFingerprintsStr);
@@ -212,7 +217,7 @@
         return;
     }
     NSURL *reqUrl = [NSURL URLWithString: [NSString stringWithFormat:@"https://%@:%@%@", [options objectForKey:@"host"], [options objectForKey:@"port"], [options objectForKey:@"path"]]];
-    NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:reqUrl cachePolicy: NSURLCacheStorageNotAllowed timeoutInterval: 20.0];
+    NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:reqUrl cachePolicy: NSURLRequestReloadIgnoringCacheData timeoutInterval: 20.0];
     req.HTTPMethod = [method uppercaseString];
 	[req setValue: @"close" forHTTPHeaderField: @"Connection"];
     NSDictionary *headers = [options objectForKey:@"headers"];
