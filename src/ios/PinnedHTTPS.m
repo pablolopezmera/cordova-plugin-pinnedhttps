@@ -8,6 +8,7 @@
 @property (strong, nonatomic) CDVPlugin *_plugin;
 @property (strong, nonatomic) NSString *_callbackId;
 @property (strong, nonatomic) NSArray *_fingerprints;
+@property (strong, nonatomic) BOOL _returnBuffer;
 @property (nonatomic, assign) BOOL validFingerprint;
 @property (retain) NSMutableData *_responseBody;
 @property (retain) NSMutableDictionary *_responseObj;
@@ -25,6 +26,7 @@
 	self._plugin = plugin;
 	self._callbackId = callbackId;
 	self._fingerprints = fingerprints;
+	self._returnBuffer = false;
 	return self;
 }
 
@@ -123,8 +125,13 @@
 - (void)connectionDidFinishLoading:(NSURLConnection*)connection {
 	NSLog(@"End of response");
     //Append response body and pass to JS
-    NSString *responseBodyStr = [[NSString alloc] initWithData: self._responseBody encoding: NSUTF8StringEncoding];
-    [self._responseObj setValue: responseBodyStr forKey: @"body"];
+	if (self._returnBuffer == false){
+		NSString *responseBodyStr = [[NSString alloc] initWithData: self._responseBody encoding: NSUTF8StringEncoding];
+	    [self._responseObj setValue: responseBodyStr forKey: @"body"];
+	} else {
+		NSArray *responseBodyArray = [NSKeyedUnarchiver unarchiveObjectWithData: self._responseBody];
+		[self._responseObj setValue: responseBodyArray forKey: @"body"];
+	}
 
     CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:self._responseObj];
     [self._plugin writeJavascript: [pluginResult toSuccessCallbackString:self._callbackId]];
@@ -263,6 +270,9 @@
     }
 
     CustomURLConnectionDelegate* delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin: self callbackId: command.callbackId fingerprints: expectedFingerprints];
+	NSObject *returnBuffer = [options objectForKey: @"returnBuffer"];
+	if (returnBuffer != nil) delegate._returnBuffer = true;
+
     NSURLConnection *connection = [[NSURLConnection alloc] initWithRequest: req delegate: delegate];
 
     if(!connection){

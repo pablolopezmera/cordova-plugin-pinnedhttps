@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.DataOutputStream;
+import java.io.ByteArrayOutputStream;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSession;
@@ -296,36 +297,58 @@ public class PinnedHTTPS extends CordovaPlugin {
 					try {
 						int httpStatusCode = conn.getResponseCode();
 						Map<String, List<String>> responseHeaders = conn.getHeaderFields();
-						BufferedReader reader;
-						if (httpStatusCode >= 400) reader = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
-						else reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-						StringBuffer response = new StringBuffer();
-						String currentLine;
-						Log.v(logTag, "Reading response");
-						while ((currentLine = reader.readLine()) != null){
-							response.append(currentLine);
-						}
-						reader.close();
-						conn.disconnect();
 
-						Log.v(logTag, "Building response object");
-						JSONObject responseObj;
-						try {
-							responseObj = buildResponseJson(httpStatusCode, response.toString(), responseHeaders);
-						} catch (JSONException e){
-							callbackContext.error("INTERNAL_ERROR");
-							Log.v(logTag, "Error while building response object: " + e.toString());
-							return;
+						if (reqOptions.has("returnBuffer")){
+							byte[] responseBytes;
+							if (httpStatusCode >= 400) responseBytes = readEntirely(conn.getErrorStream());
+							else responseBytes = readEntirely(conn.getInputStream());
+							conn.disconnect();
+
+							Log.v(logTag, "Building response object");
+							JSONObject responseObj;
+							try {
+								responseObj = buildResponseJsonWithBuffer(httpStatusCode, responseBytes, responseHeaders);
+							} catch (JSONException e){
+								callbackContext.error("INTERNAL_ERROR");
+								Log.v(logTag, "Error while building response object: " + e.toString());
+								return;
+							}
+							if (responseObj == null){
+								callbackContext.error("INTERNAL_ERROR");
+								Log.v(logTag, "responseObj is null");
+							} else callbackContext.sucess(responseObj.toString());
+						} else {
+							BufferedReader reader;
+							if (httpStatusCode >= 400) reader = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+							else reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+							StringBuffer response = new StringBuffer();
+							String currentLine;
+							Log.v(logTag, "Reading response");
+							while ((currentLine = reader.readLine()) != null){
+								response.append(currentLine);
+							}
+							reader.close();
+							conn.disconnect();
+
+							Log.v(logTag, "Building response object");
+							JSONObject responseObj;
+							try {
+								responseObj = buildResponseJson(httpStatusCode, response.toString(), responseHeaders);
+							} catch (JSONException e){
+								callbackContext.error("INTERNAL_ERROR");
+								Log.v(logTag, "Error while building response object: " + e.toString());
+								return;
+							}
+							if (responseObj == null) {
+								callbackContext.error("INTERNAL_ERROR");
+								Log.v(logTag, "responseObj is null");
+							} else callbackContext.success(responseObj.toString());
 						}
-						if (responseObj == null) {
-							callbackContext.error("INTERNAL_ERROR");
-							Log.v(logTag, "responseObj is null");
-						} else callbackContext.success(responseObj.toString());
-						Log.v(logTag, "End of req");
 					} catch (Exception e){
 						Log.v(logTag, "Error while building response object: " + e.toString());
 						callbackContext.error("INTERNAL_ERROR");
 					}
+					Log.v(logTag, "End of req");
 				}
 			});
 			return true;
@@ -357,6 +380,44 @@ public class PinnedHTTPS extends CordovaPlugin {
 			throw e;
 		}
 		return responseObj;
+	}
+
+	private static JSONObject buildResponseJsonWithBuffer(final int responseCode, final byte[] responseBodyArray, Map<String, List<String>> responseHeaders) throws JSONException{
+		JSONObject responseObj = new JSONObject();
+		try {
+			responseObj.put("statusCode", responseCode);
+			JSONArray jsonResponseArray = new JSONArray();
+			for (int i = 0; responseBodyArray.length; i++){
+				jsonResponseArray.put((int) responseBodyArray[i]);
+			}
+			responseObj.put("body", jsonResponseArray);
+
+			JSONObject headersObj = new JSONObject();
+			Set<Map.Entry<String, List<String>>> headersEntries = responseHeaders.entrySet();
+			Iterator<Map.Entry<String, List<String>>> headersIterator = headersEntries.iterator();
+			while (headersIterator.hasNext()){
+				Map.Entry<String, List<String>> currentHeader = headersIterator.next();
+				//Skip header field if values are empty
+				if (currentHeader.getValue().size() == 0) continue;
+				if (currentHeader.getKey == "" || currentHeader.getKey() == null) continue;
+				//Getting first value of header
+				headersObj.put(currentHeader.getKey(), currentHeader.getValue().get(0));
+			}
+			responseObj.put("headers", headersObj);
+		} catch (JSONException e){
+			throw e;
+		}
+		return responseObj;
+	}
+
+	private static byte[] readEntirely(InputStream i) throws IOException {
+		byte[] buffer = new byte[8192];
+		int bytesRead;
+		ByteArrayOutputStream bOutput = new ByteArrayOutputStream();
+		while ((bytesRead = i.read(buffer)) != -1){
+			bOutput.write(buffer);
+		}
+		return bOutput.toByteArray();
 	}
 
 	private static URL initURL(String s){
