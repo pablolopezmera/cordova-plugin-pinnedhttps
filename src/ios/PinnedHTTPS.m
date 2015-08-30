@@ -8,7 +8,7 @@
 @property (strong, nonatomic) CDVPlugin *_plugin;
 @property (strong, nonatomic) NSString *_callbackId;
 @property (strong, nonatomic) NSArray *_fingerprints;
-@property (nonatomic, assign) BOOL _returnBuffer;
+@property (nonatomic, assign) BOOL returnBuffer;
 @property (nonatomic, assign) BOOL validFingerprint;
 @property (retain) NSMutableData *_responseBody;
 @property (retain) NSMutableDictionary *_responseObj;
@@ -23,10 +23,10 @@
 - (id)initWithPlugin:(CDVPlugin*)plugin callbackId:(NSString*)callbackId fingerprints:(NSArray*)fingerprints
 {
 	self.validFingerprint = false;
+	self.returnBuffer = false;
 	self._plugin = plugin;
 	self._callbackId = callbackId;
 	self._fingerprints = fingerprints;
-	self._returnBuffer = false;
 	return self;
 }
 
@@ -125,7 +125,7 @@
 - (void)connectionDidFinishLoading:(NSURLConnection*)connection {
 	NSLog(@"End of response");
     //Append response body and pass to JS
-	if (self._returnBuffer == false){
+	if (self.returnBuffer == false){
 		NSString *responseBodyStr = [[NSString alloc] initWithData: self._responseBody encoding: NSUTF8StringEncoding];
 	    [self._responseObj setValue: responseBodyStr forKey: @"body"];
 	} else {
@@ -271,7 +271,7 @@
 
     CustomURLConnectionDelegate* delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin: self callbackId: command.callbackId fingerprints: expectedFingerprints];
 	NSObject *returnBuffer = [options objectForKey: @"returnBuffer"];
-	if (returnBuffer != nil) delegate._returnBuffer = true;
+	if (returnBuffer != nil) delegate.returnBuffer = true;
 
     NSURLConnection *connection = [[NSURLConnection alloc] initWithRequest: req delegate: delegate];
 
