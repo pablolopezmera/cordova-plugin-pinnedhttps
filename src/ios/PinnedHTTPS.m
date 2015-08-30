@@ -8,7 +8,7 @@
 @property (strong, nonatomic) CDVPlugin *_plugin;
 @property (strong, nonatomic) NSString *_callbackId;
 @property (strong, nonatomic) NSArray *_fingerprints;
-@property (strong, nonatomic) BOOL _returnBuffer;
+@property (nonatomic, assign) BOOL _returnBuffer;
 @property (nonatomic, assign) BOOL validFingerprint;
 @property (retain) NSMutableData *_responseBody;
 @property (retain) NSMutableDictionary *_responseObj;
