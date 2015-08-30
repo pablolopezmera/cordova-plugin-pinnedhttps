@@ -82,6 +82,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 						return;
 					}
 					Log.v(logTag, "Connection instanciated");
+					conn.addRequestProperty("Accept-Charset", "utf-8");
 					//Setting up the fingerprint verification upon session negotiation
 					try {
 						conn.setUseCaches(false);
@@ -197,6 +198,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 						return;
 					}
 					Log.v(logTag, "Connection instanciated");
+					conn.addRequestProperty("Accept-Charset", "utf-8");
 					//Append headers, if any
 					if (reqOptions.has("headers")){
 						Log.v(logTag, "Headers provided. Reading them");

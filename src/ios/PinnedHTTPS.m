@@ -171,6 +171,7 @@
     NSLog(@"get %@", reqUrl);
 	NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL: [NSURL URLWithString: reqUrl] cachePolicy: NSURLRequestReloadIgnoringCacheData timeoutInterval: 20.0];
 	[req setValue: @"close" forHTTPHeaderField: @"Connection"];
+	[req setValue: @"utf-8" forHTTPHeaderField: @"Accept-Charset"];
 	CustomURLConnectionDelegate *delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin:self callbackId: command.callbackId fingerprints: expectedFingerprints];
     NSLog(@"Finger (get) : %@", expectedFingerprintsStr);
 
@@ -220,6 +221,7 @@
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:reqUrl cachePolicy: NSURLRequestReloadIgnoringCacheData timeoutInterval: 20.0];
     req.HTTPMethod = [method uppercaseString];
 	[req setValue: @"close" forHTTPHeaderField: @"Connection"];
+	[req setValue: @"utf-8" forHTTPHeaderField: @"Accept-Charset"];
     NSDictionary *headers = [options objectForKey:@"headers"];
     if (headers != nil){
         NSArray *headersList = headers.allKeys;
