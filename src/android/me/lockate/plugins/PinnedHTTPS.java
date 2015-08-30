@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.DataOutputStream;
+import java.io.InputStream;
 import java.io.ByteArrayOutputStream;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -316,7 +317,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 							if (responseObj == null){
 								callbackContext.error("INTERNAL_ERROR");
 								Log.v(logTag, "responseObj is null");
-							} else callbackContext.sucess(responseObj.toString());
+							} else callbackContext.success(responseObj.toString());
 						} else {
 							BufferedReader reader;
 							if (httpStatusCode >= 400) reader = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
@@ -387,7 +388,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 		try {
 			responseObj.put("statusCode", responseCode);
 			JSONArray jsonResponseArray = new JSONArray();
-			for (int i = 0; responseBodyArray.length; i++){
+			for (int i = 0; i < responseBodyArray.length; i++){
 				jsonResponseArray.put((int) responseBodyArray[i]);
 			}
 			responseObj.put("body", jsonResponseArray);
@@ -399,7 +400,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 				Map.Entry<String, List<String>> currentHeader = headersIterator.next();
 				//Skip header field if values are empty
 				if (currentHeader.getValue().size() == 0) continue;
-				if (currentHeader.getKey == "" || currentHeader.getKey() == null) continue;
+				if (currentHeader.getKey() == "" || currentHeader.getKey() == null) continue;
 				//Getting first value of header
 				headersObj.put(currentHeader.getKey(), currentHeader.getValue().get(0));
 			}
