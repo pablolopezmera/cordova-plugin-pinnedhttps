@@ -58,6 +58,14 @@ function PinnedHTTPS(expectedFingerprints){
 
 		function responseHandler(responseObj){
 			if (typeof responseObj == 'string') responseObj = JSON.parse(responseObj);
+			if (options.returnBuffer){
+				var bodyLength = parseInt(responseObj.headers['Content-Length']);
+				var downSizedBody = new Uint8Array(bodyLength);
+				for (var i = 0; i < bodyLength){
+					downSizedBody[i] = responseObj.body[i];
+				}
+				responseObj.body = downSizedBody;
+			}
 			callback(null, responseObj);
 		}
 
