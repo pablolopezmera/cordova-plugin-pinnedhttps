@@ -138,7 +138,8 @@
 			return;
 		}
 		NSArray *responseBodyArray = responseBodyArrayPt;*/
-		[self._responseObj setValue: self._responseBody forKey: @"body"];
+		NSData *responseBodyData = [[NSData alloc] initWithData: self._responseBody];
+		[self._responseObj setValue: responseBodyData forKey: @"body"];
 	}
 
     CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:self._responseObj];
