@@ -129,16 +129,15 @@
 		NSString *responseBodyStr = [[NSString alloc] initWithData: self._responseBody encoding: NSUTF8StringEncoding];
 	    [self._responseObj setValue: responseBodyStr forKey: @"body"];
 	} else {
-		/*NSError *transformError;
-		id responseBodyArrayPt = [NSPropertyListSerialization dataWithPropertyList: self._responseBody format: NSPropertyListBinaryFormat_v1_0 options: 0 error: &transformError];
-		if (transformError != nil || ![responseBodyArrayPt isKindOfClass: [NSArray class]]){
-			if (transformError != nil) NSLog(@"%@", [transformError localizedDescription]);
-			CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString: @"INTERNAL_ERROR"];
-			[self._plugin writeJavascript: [rslt toErrorCallbackString: self._callbackId]];
-			return;
+		NSMutableArray *responseBodyArray = [[NSMutableArray alloc] initWithCapacity: self._responseBody.length];
+		for (int i = 0; i < self._responseBody.length; i++){
+			unsigned char currentByte;
+			NSRange currentByteRange = NSMakeRange(i, sizeof(currentByte));
+			[self._responseBody getBytes:&currentByte range: currentByteRange];
+			[responseBodyArray addObject: [NSNumber numberWithUnsignedChar: currentByte]];
 		}
-		NSArray *responseBodyArray = responseBodyArrayPt;*/
-		NSData *responseBodyData = [[NSData alloc] initWithData: self._responseBody];
+
+		NSArray *responseBodyData = [[NSArray alloc] initWithArray: responseBodyArray];
 		[self._responseObj setValue: responseBodyData forKey: @"body"];
 	}
 
