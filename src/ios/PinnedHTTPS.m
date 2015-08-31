@@ -129,7 +129,15 @@
 		NSString *responseBodyStr = [[NSString alloc] initWithData: self._responseBody encoding: NSUTF8StringEncoding];
 	    [self._responseObj setValue: responseBodyStr forKey: @"body"];
 	} else {
-		NSArray *responseBodyArray = [NSKeyedUnarchiver unarchiveObjectWithData: self._responseBody];
+		NSError *transformError;
+		id responseBodyArrayPt = [NSPropertyListSerialization dataWithPropertyList: self._responseBody format:NSPropertyListBinaryFormat error: &transformError];
+		if (transformError != nil || ![responseBodyArrayPt isKindOfClass: [NSArray class]]){
+			if (transformError != nil) NSLog(@"%@", [transformError localizedDescription]);
+			CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString: @"INTERNAL_ERROR"];
+			[self._plugin writeJavascript: [rslt toErrorCallbackString: self._callbackId]];
+			return;
+		}
+
 		[self._responseObj setValue: responseBodyArray forKey: @"body"];
 	}
 
