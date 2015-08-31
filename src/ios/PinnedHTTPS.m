@@ -130,7 +130,7 @@
 	    [self._responseObj setValue: responseBodyStr forKey: @"body"];
 	} else {
 		NSError *transformError;
-		id responseBodyArrayPt = [NSPropertyListSerialization dataWithPropertyList: self._responseBody format:NSPropertyListBinaryFormat error: &transformError];
+		id responseBodyArrayPt = [NSPropertyListSerialization dataWithPropertyList: self._responseBody format: NSPropertyListBinaryFormat_v1_0 options: 0 error: &transformError];
 		if (transformError != nil || ![responseBodyArrayPt isKindOfClass: [NSArray class]]){
 			if (transformError != nil) NSLog(@"%@", [transformError localizedDescription]);
 			CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString: @"INTERNAL_ERROR"];
