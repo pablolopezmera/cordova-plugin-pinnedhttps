@@ -53,7 +53,7 @@ https.request(reqOptions, function(err, res){
 	}
 });
 ```
-
+__NOTE__ : With `https.request`, if `returnBuffer` is defined in the `reqOptions`, then `res.body` will be returned as an `Uint8Array`
 
 
 ## List of error messages
