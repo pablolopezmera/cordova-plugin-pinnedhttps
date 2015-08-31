@@ -62,7 +62,7 @@ function PinnedHTTPS(expectedFingerprints){
 				var bodyLength = parseInt(responseObj.headers['Content-Length']);
 				var downSizedBody = new Uint8Array(bodyLength);
 				for (var i = 0; i < bodyLength; i++){
-					downSizedBody[i] = responseObj.body[i] < 0 ? responseObj.body[i] + 256;
+					downSizedBody[i] = responseObj.body[i] < 0 ? responseObj.body[i] + 256 : responseObj.body[i];
 				}
 				responseObj.body = downSizedBody;
 			}
