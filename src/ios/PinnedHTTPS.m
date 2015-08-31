@@ -137,7 +137,7 @@
 			[self._plugin writeJavascript: [rslt toErrorCallbackString: self._callbackId]];
 			return;
 		}
-
+		NSArray *responseBodyArray = responseBodyArrayPt;
 		[self._responseObj setValue: responseBodyArray forKey: @"body"];
 	}
 
