@@ -32,11 +32,11 @@
 
 - (void)connection: (NSURLConnection*)connection willSendRequestForAuthenticationChallenge: (NSURLAuthenticationChallenge*)challenge
 {
-	NSLog(@"Cert check for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
+	//NSLog(@"Cert check for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
     SecTrustRef serverCert = challenge.protectionSpace.serverTrust;
 	NSString* connFingerprint = [self getFingerprint: SecTrustGetCertificateAtIndex(serverCert, 0)];
     self._foundFingerprint = connFingerprint;
-    NSLog(@"Found fingerprint for %@ %@: %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host, connFingerprint);
+    //NSLog(@"Found fingerprint for %@ %@: %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host, connFingerprint);
 
 	bool isValid = false;
 
@@ -49,7 +49,7 @@
 
 	if (isValid){
 		self.validFingerprint = true;
-		NSLog(@"Valid cert for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
+		//NSLog(@"Valid cert for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
 		NSURLCredential *cred = [NSURLCredential credentialForTrust: serverCert];
 		[[challenge sender] useCredential: cred forAuthenticationChallenge: challenge];
 	} else {
@@ -123,7 +123,7 @@
 }
 
 - (void)connectionDidFinishLoading:(NSURLConnection*)connection {
-	NSLog(@"End of response");
+	//NSLog(@"End of response");
     //Append response body and pass to JS
 	if (self.returnBuffer == false){
 		NSString *responseBodyStr = [[NSString alloc] initWithData: self._responseBody encoding: NSUTF8StringEncoding];
@@ -183,12 +183,12 @@
 
 	NSArray *expectedFingerprints = expectedFingerprintsPt;
 
-    NSLog(@"get %@", reqUrl);
+    //NSLog(@"get %@", reqUrl);
 	NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL: [NSURL URLWithString: reqUrl] cachePolicy: NSURLRequestReloadIgnoringCacheData timeoutInterval: 20.0];
 	[req setValue: @"close" forHTTPHeaderField: @"Connection"];
 	[req setValue: @"utf-8" forHTTPHeaderField: @"Accept-Charset"];
 	CustomURLConnectionDelegate *delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin:self callbackId: command.callbackId fingerprints: expectedFingerprints];
-    NSLog(@"Finger (get) : %@", expectedFingerprintsStr);
+    //NSLog(@"Finger (get) : %@", expectedFingerprintsStr);
 
 	NSURLConnection *connection = [[NSURLConnection alloc] initWithRequest: req delegate: delegate];
 	if (!connection){
@@ -201,7 +201,7 @@
 - (void)req:(CDVInvokedUrlCommand*)command {
     NSString *optionsJsonStr = [command.arguments objectAtIndex:0];
     NSString *expectedFingerprintsStr = [command.arguments objectAtIndex:1];
-    NSLog(@"Finger: %@", expectedFingerprintsStr);
+    //NSLog(@"Finger: %@", expectedFingerprintsStr);
     //Parsing the options dictionary
     NSData *jsonData = [optionsJsonStr dataUsingEncoding:NSUTF8StringEncoding];
     NSError *jsonErr;
