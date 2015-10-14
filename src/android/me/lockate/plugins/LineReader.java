@@ -15,7 +15,7 @@ public class LineReader {
 		boolean testNewLine = false;
 		int i; //Current char code
 
-		while ((i == br.read()) >= 0){
+		while ((i = br.read()) >= 0){
 			sb.append((char)i);
 
 			if (i == '\n') break;
