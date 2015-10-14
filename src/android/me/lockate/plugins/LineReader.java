@@ -3,6 +3,10 @@ package me.lockate.plugins;
 import java.io.BufferedReader;
 import java.io.IOException;
 
+/*
+* To be fair, this has been harvested from : http://www.tutorialspoint.com/compile_java_online.php?PID=0Bw_CjBb95KQMMl9BbUpjU1lmOG8
+*/
+
 public class LineReader {
 	private BufferedReader br;
 
