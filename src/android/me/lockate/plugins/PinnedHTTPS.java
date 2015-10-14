@@ -128,10 +128,11 @@ public class PinnedHTTPS extends CordovaPlugin {
 						BufferedReader reader;
 						if (httpStatusCode >= 400) reader = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
 						else reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+						LineReader lr = new LineReader(reader);
 						StringBuffer response = new StringBuffer();
 						String currentLine;
 						Log.v(logTag, "Reading response");
-						while ((currentLine = reader.readLine()) != null){
+						while ((currentLine = lr.readExactLine()) != null){
 							response.append(currentLine);
 						}
 						reader.close();
@@ -322,10 +323,11 @@ public class PinnedHTTPS extends CordovaPlugin {
 							BufferedReader reader;
 							if (httpStatusCode >= 400) reader = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
 							else reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+							LineReader lr = new LineReader(reader);
 							StringBuffer response = new StringBuffer();
 							String currentLine;
 							Log.v(logTag, "Reading response");
-							while ((currentLine = reader.readLine()) != null){
+							while ((currentLine = lr.readExactLine()) != null){
 								response.append(currentLine);
 							}
 							reader.close();
@@ -389,7 +391,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 			responseObj.put("statusCode", responseCode);
 			JSONArray jsonResponseArray = new JSONArray();
 			for (int i = 0; i < responseBodyArray.length; i++){
-				jsonResponseArray.put((int) responseBodyArray[i]);
+				jsonResponseArray.put((int) responseBodyArray[i] & 0x000000ff);
 			}
 			responseObj.put("body", jsonResponseArray);
 
