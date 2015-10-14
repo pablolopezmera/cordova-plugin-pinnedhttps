@@ -32,7 +32,7 @@ public class LineReader {
 			}
 		}
 
-		return sb.length() == 0 ? NULL : sb.toString();
+		return sb.length() == 0 ? null : sb.toString();
 	}
 
 }
