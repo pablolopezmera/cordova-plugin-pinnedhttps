@@ -54,7 +54,7 @@
 		[[challenge sender] useCredential: cred forAuthenticationChallenge: challenge];
 	} else {
 		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"INVALID_CERT"];
-		[self._plugin writeJavascript:[rslt toErrorCallbackString: self._callbackId]];
+		[self._plugin.commandDelegate sendPluginResult: rslt callbackId: self._callbackId]];
 		NSLog(@"Invalid cert for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
 		[connection cancel];
 	}
@@ -109,7 +109,7 @@
 	}
 
 	pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:errStr];
-    [self._plugin writeJavascript:[pluginResult toErrorCallbackString:self._callbackId]];
+    [self._plugin.commandDelegate sendPluginResult: pluginResult callbackId: self._callbackId]];
 }
 
 - (void)connection: (NSURLConnection*)connection didReceiveResponse:(NSURLResponse*)res{
@@ -142,7 +142,7 @@
 	}
 
     CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:self._responseObj];
-    [self._plugin writeJavascript: [pluginResult toSuccessCallbackString:self._callbackId]];
+    [self._plugin.commandDelegate sendPluginResult: pluginResult callbackId: self._callbackId]];
 }
 
 - (NSString*)getFingerprint: (SecCertificateRef) cert{
@@ -177,7 +177,7 @@
 
 	if (fingerprintsJsonErr != nil || ![expectedFingerprintsPt isKindOfClass: [NSArray class]]){
 		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString:@"INVALID_PARAMS"];
-		[self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
+		[self sendPluginResult: rslt callbackId: command.callbackId];
 		return;
 	}
 
@@ -194,7 +194,7 @@
 	if (!connection){
 		NSLog(@"Error with connection");
 		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_ERROR messageAsString: @"CANT_CONNECT"];
-		[self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
+		[self.commandDelegate sendPluginResult: rslt callbackId: command.callbackId];
 	}
 }
 
@@ -209,7 +209,7 @@
 
     if (jsonErr != nil){
         CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString:@"INVALID_PARAMS"];
-        [self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
+        [self.commandDelegate sendPluginResult: rslt callbackId: command.callbackId];
         return;
     }
 
@@ -220,7 +220,7 @@
 
 	if (fingerprintsJsonErr != nil || ![expectedFingerprintsPt isKindOfClass: [NSArray class]]){
 		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString:@"INVALID_PARAMS"];
-		[self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
+		[self.commandDelegate sendPluginResult: rslt callbackId: command.callbackId];
 		return;
 	}
 
@@ -229,7 +229,7 @@
     NSString *method = [options objectForKey:@"method"];
     if (!([method isEqual:@"get"] || [method isEqual:@"post"] || [method isEqual:@"delete"] || [method isEqual:@"put"] || [method isEqual:@"head"] || [method isEqual:@"options"] || [method isEqual:@"patch"] || [method isEqual:@"trace"] || [method isEqual:@"connect"])){
         CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_ERROR messageAsString:@"INVALID_METHOD"];
-        [self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
+        [self.commandDelegate sendPluginResult: rslt callbackId: command.callbackId];
         return;
     }
     NSURL *reqUrl = [NSURL URLWithString: [NSString stringWithFormat:@"https://%@:%@%@", [options objectForKey:@"host"], [options objectForKey:@"port"], [options objectForKey:@"path"]]];
@@ -262,7 +262,7 @@
 
 			if (stringifyErr != nil){
 				CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString:@"INVALID_BODY"];
-				[self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
+				[self.commandDelegate sendPluginResult: rslt toErrorCallbackString: command.callbackId];
 				return;
 			}
 
@@ -272,7 +272,7 @@
 		} else {
 			NSLog(@"Unknown body type");
 			CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString:@"INVALID_BODY"];
-			[self writeJavascript: [rslt toErrorCallbackString:command.callbackId]];
+			[self.commandDelegate sendPluginResult: rslt callbackId: command.callbackId];
 			return;
 		}
     }
@@ -286,7 +286,7 @@
     if(!connection){
 		NSLog(@"Connection couldn't be initialized");
         CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_ERROR messageAsString:@"CANT_CONNECT"];
-        [self writeJavascript: [rslt toErrorCallbackString: command.callbackId]];
+        [self.commandDelegate sendPluginResult: rslt callbackId: command.callbackId];
     }
 }
 
