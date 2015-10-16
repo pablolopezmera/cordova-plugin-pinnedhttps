@@ -54,7 +54,7 @@
 		[[challenge sender] useCredential: cred forAuthenticationChallenge: challenge];
 	} else {
 		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"INVALID_CERT"];
-		[self._plugin.commandDelegate sendPluginResult: rslt callbackId: self._callbackId]];
+		[self._plugin.commandDelegate sendPluginResult: rslt callbackId: self._callbackId];
 		NSLog(@"Invalid cert for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
 		[connection cancel];
 	}
@@ -109,7 +109,7 @@
 	}
 
 	pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:errStr];
-    [self._plugin.commandDelegate sendPluginResult: pluginResult callbackId: self._callbackId]];
+    [self._plugin.commandDelegate sendPluginResult: pluginResult callbackId: self._callbackId];
 }
 
 - (void)connection: (NSURLConnection*)connection didReceiveResponse:(NSURLResponse*)res{
@@ -142,7 +142,7 @@
 	}
 
     CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:self._responseObj];
-    [self._plugin.commandDelegate sendPluginResult: pluginResult callbackId: self._callbackId]];
+    [self._plugin.commandDelegate sendPluginResult: pluginResult callbackId: self._callbackId];
 }
 
 - (NSString*)getFingerprint: (SecCertificateRef) cert{
@@ -177,7 +177,7 @@
 
 	if (fingerprintsJsonErr != nil || ![expectedFingerprintsPt isKindOfClass: [NSArray class]]){
 		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString:@"INVALID_PARAMS"];
-		[self sendPluginResult: rslt callbackId: command.callbackId];
+		[self.commandDelegate sendPluginResult: rslt callbackId: command.callbackId];
 		return;
 	}
 
@@ -262,7 +262,7 @@
 
 			if (stringifyErr != nil){
 				CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_JSON_EXCEPTION messageAsString:@"INVALID_BODY"];
-				[self.commandDelegate sendPluginResult: rslt toErrorCallbackString: command.callbackId];
+				[self.commandDelegate sendPluginResult: rslt callbackId: command.callbackId];
 				return;
 			}
 
