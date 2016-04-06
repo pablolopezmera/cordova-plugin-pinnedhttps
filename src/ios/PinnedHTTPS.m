@@ -13,20 +13,22 @@
 @property (retain) NSMutableData *_responseBody;
 @property (retain) NSMutableDictionary *_responseObj;
 @property (retain) NSString *_foundFingerprint;
+@property (retain) NSString *_fingerprintType;
 
-- (id)initWithPlugin:(CDVPlugin*)plugin callbackId:(NSString*)callbackId fingerprints:(NSArray*)fingerprints;
+- (id)initWithPlugin:(CDVPlugin*)plugin callbackId:(NSString*)callbackId fingerprints:(NSArray*)fingerprints fingerprintType:(NSString*)fingerprintType;
 
 @end
 
 @implementation CustomURLConnectionDelegate
 
-- (id)initWithPlugin:(CDVPlugin*)plugin callbackId:(NSString*)callbackId fingerprints:(NSArray*)fingerprints
+- (id)initWithPlugin:(CDVPlugin*)plugin callbackId:(NSString*)callbackId fingerprints:(NSArray*)fingerprints fingerprintType:(NSString*)fingerprintType
 {
 	self.validFingerprint = false;
 	self.returnBuffer = false;
 	self._plugin = plugin;
 	self._callbackId = callbackId;
 	self._fingerprints = fingerprints;
+	self._fingerprintType = fingerprintType;
 	return self;
 }
 
@@ -34,18 +36,23 @@
 {
 	//NSLog(@"Cert check for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
     SecTrustRef serverCert = challenge.protectionSpace.serverTrust;
-	NSString* connFingerprint = [self getFingerprint: SecTrustGetCertificateAtIndex(serverCert, 0)];
+
+	NSString* connFingerprint;
+	bool isValid = false;
+	int certCount = SecTrustGetCertificateCount(serverCert);
+	for (int i = 0; i < certCount; i++){
+		if ([self._fingerprintType isEqual: @"SHA1"]) connFingerprint = [self getSHA1Fingerprint: SecTrustGetCertificateAtIndex(serverCert, i)];
+		else connFingerprint = [self getSHA256Fingerprint: SecTrustGetCertificateAtIndex(serverCert, i)];
+		for (int j = 0; j < self._fingerprints.count; j++){
+			if ([connFingerprint caseInsensitiveCompare: [self._fingerprints objectAtIndex: j]] == NSOrderedSame){
+				isValid = true;
+				break;
+			}
+		}
+		if (isValid) break;
+	}
     self._foundFingerprint = connFingerprint;
     //NSLog(@"Found fingerprint for %@ %@: %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host, connFingerprint);
-
-	bool isValid = false;
-
-	for (int i = 0; i < self._fingerprints.count; i++){
-		if ([connFingerprint caseInsensitiveCompare: [self._fingerprints objectAtIndex: i]] == NSOrderedSame){
-			isValid = true;
-			break;
-		}
-	}
 
 	if (isValid){
 		self.validFingerprint = true;
@@ -145,13 +152,24 @@
     [self._plugin.commandDelegate sendPluginResult: pluginResult callbackId: self._callbackId];
 }
 
-- (NSString*)getFingerprint: (SecCertificateRef) cert{
+- (NSString*)getSHA1Fingerprint: (SecCertificateRef) cert{
 	NSData *certData = (__bridge NSData*) SecCertificateCopyData(cert);
 	unsigned char sha1_bytes[CC_SHA1_DIGEST_LENGTH];
 	CC_SHA1(certData.bytes, (unsigned int) certData.length, sha1_bytes);
 	NSMutableString *connFingerprint = [NSMutableString stringWithCapacity:CC_SHA1_DIGEST_LENGTH * 2];
 	for (int i = 0; i < CC_SHA1_DIGEST_LENGTH; i++){
 		[connFingerprint appendFormat:@"%02x", sha1_bytes[i]];
+	}
+	return [connFingerprint lowercaseString];
+}
+
+- (NSString*)getSHA256Fingerprint: (SecCertificateRef) cert{
+	NSData *certData = (__bridge NSData*) SecCertificateCopyData(cert);
+	unsigned char sha256_bytes[CC_SHA256_DIGEST_LENGTH];
+	CC_SHA256(certData.bytes, (unsigned int) certData.length, sha256_bytes);
+	NSMutableString *connFingerprint = [NSMutableString stringWithCapacity:CC_SHA256_DIGEST_LENGTH * 2];
+	for (int i = 0; i < CC_SHA256_DIGEST_LENGTH; i++){
+		[connFingerprint appendFormat:@"%02x", sha256_bytes[i]];
 	}
 	return [connFingerprint lowercaseString];
 }
@@ -169,7 +187,16 @@
 - (void)get:(CDVInvokedUrlCommand*)command {
 	NSString *reqUrl = [command.arguments objectAtIndex:0];
 	NSString *expectedFingerprintsStr = [command.arguments objectAtIndex:1];
-
+	NSString *fingerprintTypeStr = @"SHA1";
+	//Check whether a fingerprintTypeStr argument has been provided; check its value
+	if ([command.arguments count] > 2){
+		fingerprintTypeStr = [command.arguments objectAtIndex: 2];
+	}
+	if (!([fingerprintTypeStr isEqual: @"SHA1"] || [fingerprintTypeStr isEqual: @"SHA256"])){
+		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_ERROR messageAsString: @"INVALID_FINGERPRINT_TYPE"];
+		[self.commandDelegate sendPluginResult: rslt callbackId: command.callbackId];
+		return;
+	}
 	//Parsing the expected fingerprints list
 	NSData *fingerprintsJsonData = [expectedFingerprintsStr dataUsingEncoding:NSUTF8StringEncoding];
 	NSError *fingerprintsJsonErr;
@@ -187,7 +214,7 @@
 	NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL: [NSURL URLWithString: reqUrl] cachePolicy: NSURLRequestReloadIgnoringCacheData timeoutInterval: 20.0];
 	[req setValue: @"close" forHTTPHeaderField: @"Connection"];
 	[req setValue: @"utf-8" forHTTPHeaderField: @"Accept-Charset"];
-	CustomURLConnectionDelegate *delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin:self callbackId: command.callbackId fingerprints: expectedFingerprints];
+	CustomURLConnectionDelegate *delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin:self callbackId: command.callbackId fingerprints: expectedFingerprints fingerprintType: fingerprintTypeStr];
     //NSLog(@"Finger (get) : %@", expectedFingerprintsStr);
 
 	NSURLConnection *connection = [[NSURLConnection alloc] initWithRequest: req delegate: delegate];
@@ -201,7 +228,17 @@
 - (void)req:(CDVInvokedUrlCommand*)command {
     NSString *optionsJsonStr = [command.arguments objectAtIndex:0];
     NSString *expectedFingerprintsStr = [command.arguments objectAtIndex:1];
-    //NSLog(@"Finger: %@", expectedFingerprintsStr);
+	NSString *fingerprintTypeStr = @"SHA1";
+	//Check whether a fingerprintTypeStr has been provided; check its value
+	if ([command.arguments count] > 2){
+		fingerprintTypeStr = [command.arguments objectAtIndex: 2];
+	}
+	if (!([fingerprintTypeStr isEqual: @"SHA1"] || [fingerprintTypeStr isEqual: @"SHA256"])){
+		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus: CDVCommandStatus_ERROR messageAsString: @"INVALID_FINGERPRINT_TYPE"];
+		[self.commandDelegate sendPluginResult: rslt callbackId: command.callbackId];
+		return;
+	}
+	//NSLog(@"Finger: %@", expectedFingerprintsStr);
     //Parsing the options dictionary
     NSData *jsonData = [optionsJsonStr dataUsingEncoding:NSUTF8StringEncoding];
     NSError *jsonErr;
@@ -277,7 +314,7 @@
 		}
     }
 
-    CustomURLConnectionDelegate* delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin: self callbackId: command.callbackId fingerprints: expectedFingerprints];
+    CustomURLConnectionDelegate* delegate = [[CustomURLConnectionDelegate alloc] initWithPlugin: self callbackId: command.callbackId fingerprints: expectedFingerprints fingerprintType: fingerprintTypeStr];
 	NSObject *returnBuffer = [options objectForKey: @"returnBuffer"];
 	if (returnBuffer != nil) delegate.returnBuffer = true;
 

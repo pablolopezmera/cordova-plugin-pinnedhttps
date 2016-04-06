@@ -23,13 +23,19 @@ public final class HashTrust implements X509TrustManager {
 	private final static String logTag = "PinnedHTTPS";
 
 	private List<String> _expectedFingerprints;
+	private String _fingerprintType = "SHA1";
 
-	public HashTrust(List<String> fingerprints){
+	public HashTrust(List<String> fingerprints, String fingerprintType){
+		//Checking fingerprints argument
 		if (fingerprints == null || fingerprints.size() == 0) throw new IllegalArgumentException("Excepted fingerprints list cannot be null");
 		for (int i = 0; i < fingerprints.size(); i++){
 			fingerprints.set(i, removeSpaces(fingerprints.get(i)));
 		}
 		_expectedFingerprints = fingerprints;
+		//Checking the fingerprintType argument
+		if (fingerprintType == null || fingerprintType.length() == 0) return; //Accept null or empty strings. Using SHA1 default
+		if (!(fingerprintType.equals("SHA1") || fingerprintType.equals("SHA256"))) throw new IllegalArgumentException("When defined, fingerprintType must either be SHA1 or SHA256");
+		_fingerprintType = fingerprintType;
 	}
 
 	public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException{
@@ -41,29 +47,31 @@ public final class HashTrust implements X509TrustManager {
 			throw new IllegalArgumentException("Cert chain cannot be empty");
 		}
 
-		X509Certificate serverCert = chain[0];
-
-		//Instanciating SHA1 digest
-		MessageDigest md;
-		try {
-			md = MessageDigest.getInstance("SHA1");
-			md.update(serverCert.getEncoded());
-		} catch (NoSuchAlgorithmException e){
-			throw new CertificateException("Missing SHA1 support! Killing the connection");
-		} catch (CertificateEncodingException e){
-			throw new CertificateException("Bad certificate encoding");
-		}
-
-		String foundFingerprint = dumpHex(md.digest());
-		Log.v(logTag, "Found fingerprint:\t" + foundFingerprint);
-
+		String foundFingerprint;
 		boolean isValid = false;
 
-		for (int i = 0; i < _expectedFingerprints.size(); i++){
-			if (foundFingerprint.equalsIgnoreCase(_expectedFingerprints.get(i))){
-				isValid = true;
-				break;
+		for (int iCert = 0; iCert < chain.length; iCert++){
+			X509Certificate serverCert = chain[iCert];
+			//Instanciating SHA digest
+			MessageDigest md;
+			try {
+				md = MessageDigest.getInstance(_fingerprintType);
+				md.update(serverCert.getEncoded());
+			} catch (NoSuchAlgorithmException e){
+				throw new CertificateException("Missing SHA1 support! Killing the connection");
+			} catch (CertificateEncodingException e){
+				throw new CertificateException("Bad certificate encoding");
 			}
+			//Getting the fingerprint of the current cert
+			foundFingerprint = dumpHex(md.digest());
+			Log.v(logTag, "Found fingerprint at index " + iCert + ":\t" + foundFingerprint);
+			for (int i = 0; i < _expectedFingerprints.size(); i++){
+				if (foundFingerprint.equalsIgnoreCase(_expectedFingerprints.get(i))){
+					isValid = true;
+					break;
+				}
+			}
+			if (isValid) break; //Get out of the loop if the chain has been validated
 		}
 
 		if (!isValid) throw new CertificateException("INVALID_CERT");

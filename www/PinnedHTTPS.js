@@ -6,9 +6,22 @@ function PinnedHTTPS(expectedFingerprints){
 
 	if (typeof expectedFingerprints == 'string') expectedFingerprints = [expectedFingerprints];
 
+	var fingerprintType;
 	for (var i = 0; i < expectedFingerprints.length; i++){
 		expectedFingerprints[i] = expectedFingerprints[i].trim().replace(/ +/g, '').toLowerCase();
-		if (!isSHA1(expectedFingerprints[i])) throw new TypeError('invalid fingerprint ' + expectedFingerprints[i]);
+		//Checking that the fingerprint has a valid format
+		if (!(isSHA1(expectedFingerprints[i]) || isSHA256(expectedFingerprints[i]))) throw new TypeError('invalid fingerprint ' + expectedFingerprints[i]);
+		//Checking that all fingerprints are of the same type
+		if (i == 0){
+			if (isSHA1(expectedFingerprints[i])) fingerprintType = 'SHA1';
+			else fingerprintType = 'SHA256';
+		} else {
+			if (fingerprintType == 'SHA1'){
+				if (!isSHA1(expectedFingerprints[i])) throw new TypeError('All fingerprints must be of the same type. Fingerprint ' + expectedFingerprints[i] + ' is not SHA1');
+			} else {
+				if (!isSHA256(expectedFingerprints[i])) throw new TypeError('All fingerprints must be of the same type. Fingerprint ' + expectedFingerprints[i] + ' is not SHA256');
+			}
+		}
 	}
 
 	this.getFingerprints = function(){ return expectedFingerprints; };
@@ -77,6 +90,14 @@ function PinnedHTTPS(expectedFingerprints){
 
 module.exports = PinnedHTTPS;
 
+function isHex(s){
+	return typeof s == 'string' && s.length % 2 == 0 && /^([a-f]|[0-9])+$/i.test(s);
+}
+
 function isSHA1(s){
-	return (typeof s == 'string' && s.length == 40 && /^([a-f]|[0-9])+$/i.test(s));
+	return isHex(s) && s.length == 40;
+}
+
+function isSHA256(s){
+	return isHex(s) && s.length == 64;
 }

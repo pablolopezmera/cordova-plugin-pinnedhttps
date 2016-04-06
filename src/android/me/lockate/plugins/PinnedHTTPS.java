@@ -55,6 +55,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 					String getUrlStr = ""; //Request URL
 					String fingerprintsArrayStr = ""; //Expected fingerprints
 					JSONArray fingerprintsJson;
+					String fingerprintType;
 					List<String> fingerprints = new LinkedList<String>();
 					try {
 						getUrlStr = args.getString(0);
@@ -65,6 +66,8 @@ public class PinnedHTTPS extends CordovaPlugin {
 						callbackContext.error("INVALID_PARAMS");
 						return;
 					}
+
+					fingerprintType = isSHA1(fingerprints.get(0)) ? "SHA1" : "SHA256";
 
 					Log.v(logTag, "getUrlStr: " + getUrlStr + "\n" + "fingerprints: " + fingerprintsArrayStr);
 
@@ -90,7 +93,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 						conn.setUseCaches(false);
 						Log.v(logTag, "Disabled cache");
 
-						TrustManager tm[] = { new HashTrust(fingerprints) };
+						TrustManager tm[] = { new HashTrust(fingerprints, fingerprintType) };
 						SSLContext connContext = SSLContext.getInstance("TLS");
 						connContext.init(null, tm, null);
 						conn.setSSLSocketFactory(connContext.getSocketFactory());
@@ -168,6 +171,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 					JSONObject reqOptions;
 					String fingerprintsArrayStr = "", hostname = "", port = "", path = "", httpMethod = "";
 					JSONArray fingerprintsJson;
+					String fingerprintType;
 					List<String> fingerprints = new LinkedList<String>();
 					try {
 						reqOptions = new JSONObject(args.getString(0));
@@ -183,6 +187,8 @@ public class PinnedHTTPS extends CordovaPlugin {
 						callbackContext.error("INVALID_PARAMS");
 						return;
 					}
+
+					fingerprintType = isSHA1(fingerprints.get(0)) ? "SHA1" : "SHA256";
 
 					httpMethod = httpMethod.toUpperCase();
 					if (!(httpMethod.equals("GET") || httpMethod.equals("POST") || httpMethod.equals("DELETE") || httpMethod.equals("PUT") || httpMethod.equals("HEAD") || httpMethod.equals("OPTIONS") || httpMethod.equals("PATCH") || httpMethod.equals("TRACE") || httpMethod.equals("CONNECT"))){
@@ -231,7 +237,7 @@ public class PinnedHTTPS extends CordovaPlugin {
 						conn.setUseCaches(false);
 						Log.v(logTag, "Set the HTTP method to use. Disabled cache");
 
-						TrustManager tm[] = { new HashTrust(fingerprints) };
+						TrustManager tm[] = { new HashTrust(fingerprints, fingerprintType) };
 						SSLContext connContext = SSLContext.getInstance("TLS");
 						connContext.init(null, tm, null);
 						conn.setSSLSocketFactory(connContext.getSocketFactory());
@@ -439,5 +445,13 @@ public class PinnedHTTPS extends CordovaPlugin {
 			s.append(callstack[i].toString() + "\n");
 		}
 		return s.toString();
+	}
+
+	private static boolean isSHA1(String s){
+		return s.length() == 40;
+	}
+
+	private static boolean isSHA256(String s){
+		return s.length() == 64;
 	}
 }
