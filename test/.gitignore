@@ -1,7 +1,0 @@
-*.DS_Store
-hooks/
-plugins/
-platforms/
-www/res/
-www/spec/
-www/spec.html
