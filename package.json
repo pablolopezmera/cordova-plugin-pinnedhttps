@@ -1,0 +1,35 @@
+{
+  "name": "cordova-plugin-pinnedhttps",
+  "version": "0.1.0",
+  "description": "A Cordova plugin allowing you to make https requests, with (fingerprint-based) certificate pinning",
+  "main": "index.js",
+  "cordova": {
+    "id": "cordova-plugin-pinnedhttps",
+    "platforms": [
+        "ios",
+        "android"
+    ]
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LockateMe/cordova-plugin-pinnedhttps.git"
+  },
+  "keywords": [
+    "security",
+    "https",
+    "ceritifcate",
+    "fingerprint"
+  ],
+  "author": "Ahmad Benmrad",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/LockateMe/cordova-plugin-pinnedhttps/issues"
+  },
+  "homepage": "https://github.com/LockateMe/cordova-plugin-pinnedhttps#readme"
+}
