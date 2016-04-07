@@ -91,3 +91,7 @@ Error message	| Meaning
 ```
 	cordova plugin add https://github.com/LockateMe/cordova-plugin-pinnedhttps.git#:/tests
 ```
+
+## License
+
+This plugin is distributed under the terms of the MIT license.
