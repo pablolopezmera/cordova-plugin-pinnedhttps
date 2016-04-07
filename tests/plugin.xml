@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schema.android.com/apk/res/android" id="cordova-plugin-pinnedhttps-tests" version="0.1.0">
+	<name>Pinned HTTPS Tests</name>
+	<description>
+		Unit testing for cordova-plugin-pinnedhttps
+	</description>
+
+	<license>MIT</license>
+	<keywords>security,https,ceritifcate,fingerprint</keywords>
+	<engines>
+		<engine name="cordova" version=">=3.0.0" />
+	</engines>
+
+	<js-module name="tests" src="tests.js">
+	</js-module>
+</plugin>
