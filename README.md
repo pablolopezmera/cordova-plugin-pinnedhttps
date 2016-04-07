@@ -1,4 +1,4 @@
-# PinnedHTTPS-Phonegap-Plugin
+# cordova-plugin-pinnedhttps
 
 
 A phonegap plugin that will allow you to make HTTPS requests with certificate fingerprint verification
@@ -8,17 +8,23 @@ A phonegap plugin that will allow you to make HTTPS requests with certificate fi
 
 
 ```
-phonegap plugin add https://github.com/LockateMe/PinnedHTTPS-Phonegap-Plugin
+phonegap plugin add cordova-plugin-pinnedhttps
 ```
 
 ## Usage
 
-This plugin compiles and has been tested as part of an other project (a phonegap app).
+This plugin compiles and has been tested as part of an other project (a cordova app).
 
 __NOTE:__ This plugin doesn't follow HTTP redirections
 
 ```js
-// The `fingerprints` parameter must either be a string or an array of strings; each string must be an SHA1 hash
+/*
+The `fingerprints` parameter must either be a string or an array of
+strings; each string must be an SHA1 or SHA256 hash. (SHA1 and SHA256 cannot
+be mixed)
+
+Note that some sites use multiple certificates (on the same hostname), and some others use cross-signed certificates. These cases might trigger "INVALID_CERT" errors
+ */
 var https = new navigator.httpsBuilder(fingerprints);
 
 https.get('https://yoursite.tld/yourpath', function(err, res){
