@@ -14,6 +14,7 @@
 @property (retain) NSMutableDictionary *_responseObj;
 @property (retain) NSString *_foundFingerprint;
 @property (retain) NSString *_fingerprintType;
+@property (retain) NSString *_allFingerprints;
 
 - (id)initWithPlugin:(CDVPlugin*)plugin callbackId:(NSString*)callbackId fingerprints:(NSArray*)fingerprints fingerprintType:(NSString*)fingerprintType;
 
@@ -40,10 +41,19 @@
 	NSString* connFingerprint;
 	bool isValid = false;
 	int certCount = SecTrustGetCertificateCount(serverCert);
+    printf("\ncertificados: %lu", (unsigned long)certCount);
+    self._allFingerprints = @"";
 	for (int i = 0; i < certCount; i++){
 		if ([self._fingerprintType isEqual: @"SHA1"]) connFingerprint = [self getSHA1Fingerprint: SecTrustGetCertificateAtIndex(serverCert, i)];
 		else connFingerprint = [self getSHA256Fingerprint: SecTrustGetCertificateAtIndex(serverCert, i)];
-		for (int j = 0; j < self._fingerprints.count; j++){
+        printf("\n%s", [connFingerprint UTF8String]);
+        printf("\nlista finger: %lu", (unsigned long)self._fingerprints.count);
+
+        self._allFingerprints = [self._allFingerprints stringByAppendingString:connFingerprint];
+        self._allFingerprints = [self._allFingerprints stringByAppendingString:@","];
+        
+        for (int j = 0; j < self._fingerprints.count; j++){
+            printf("\n%s", [[self._fingerprints objectAtIndex: j] UTF8String] );
 			if ([connFingerprint caseInsensitiveCompare: [self._fingerprints objectAtIndex: j]] == NSOrderedSame){
 				isValid = true;
 				break;
@@ -51,6 +61,7 @@
 		}
 		if (isValid) break;
 	}
+    printf("\n");
     self._foundFingerprint = connFingerprint;
     //NSLog(@"Found fingerprint for %@ %@: %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host, connFingerprint);
 
@@ -60,7 +71,23 @@
 		NSURLCredential *cred = [NSURLCredential credentialForTrust: serverCert];
 		[[challenge sender] useCredential: cred forAuthenticationChallenge: challenge];
 	} else {
-		CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"INVALID_CERT"];
+        
+        NSDictionary *jsonObj = [ [NSDictionary alloc]
+                                 initWithObjectsAndKeys :
+                                 @"INVALID_CERT", @"error",
+                                 @"false", @"success",
+                                 self._allFingerprints, @"all_fingerprints",
+                                 nil
+                                 ];
+        
+        CDVPluginResult *rslt = [ CDVPluginResult
+                                         resultWithStatus    : CDVCommandStatus_ERROR
+                                         messageAsDictionary : jsonObj
+                                         ];
+
+        
+		// CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"INVALID_CERT"];
+        
 		[self._plugin.commandDelegate sendPluginResult: rslt callbackId: self._callbackId];
 		NSLog(@"Invalid cert for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
 		[connection cancel];
@@ -148,7 +175,21 @@
 		[self._responseObj setValue: responseBodyData forKey: @"body"];
 	}
 
-    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:self._responseObj];
+//    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:self._responseObj];
+    
+    NSDictionary *jsonObj = [ [NSDictionary alloc]
+                             initWithObjectsAndKeys :
+                             @"true", @"success",
+                             self._foundFingerprint, @"validated_fingerprint",
+                             self._allFingerprints, @"all_fingerprints",
+                             nil
+                             ];
+    
+    CDVPluginResult *pluginResult = [ CDVPluginResult
+                                     resultWithStatus    : CDVCommandStatus_OK
+                                     messageAsDictionary : jsonObj
+                                     ];
+    
     [self._plugin.commandDelegate sendPluginResult: pluginResult callbackId: self._callbackId];
 }
 
