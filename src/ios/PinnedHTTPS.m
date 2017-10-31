@@ -15,12 +15,37 @@
 @property (retain) NSString *_foundFingerprint;
 @property (retain) NSString *_fingerprintType;
 @property (retain) NSString *_allFingerprints;
+@property (retain) NSString *log;
 
 - (id)initWithPlugin:(CDVPlugin*)plugin callbackId:(NSString*)callbackId fingerprints:(NSArray*)fingerprints fingerprintType:(NSString*)fingerprintType;
 
 @end
 
 @implementation CustomURLConnectionDelegate
+
+-(void)WriteToStringFile:(NSString *)textToWrite{
+    NSFileManager *fileMgr;
+    NSString *homeDir;
+    fileMgr = [NSFileManager defaultManager];
+    homeDir = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents"];
+    
+    NSString *filepath;
+    filepath = [[NSString alloc] init];
+    NSError *err;
+    
+    filepath = [homeDir stringByAppendingPathComponent:@"pinnedhttps.log"];
+    
+    BOOL ok = [textToWrite writeToFile:filepath atomically:YES encoding:NSUnicodeStringEncoding error:&err];
+    
+    if (ok) {
+        NSLog(@"File writen %@\n%@",
+              filepath, textToWrite);
+    } else {
+        NSLog(@"Error writing sfile at %@\n%@",
+              filepath, [err localizedFailureReason]);
+    }
+    
+}
 
 - (id)initWithPlugin:(CDVPlugin*)plugin callbackId:(NSString*)callbackId fingerprints:(NSArray*)fingerprints fingerprintType:(NSString*)fingerprintType
 {
@@ -41,20 +66,36 @@
 	NSString* connFingerprint;
 	bool isValid = false;
 	int certCount = SecTrustGetCertificateCount(serverCert);
-    printf("\ncertificados: %lu", (unsigned long)certCount);
+    
     self._allFingerprints = @"";
-	for (int i = 0; i < certCount; i++){
+    self.log = @"Start fingerprint validation...";
+    
+    printf("\nFound fingerprint size: %lu", (unsigned long)certCount);
+    self.log = [self.log stringByAppendingString:[NSString stringWithFormat:@"\nFound fingerprint size: %lu", (unsigned long)certCount]];
+    
+    printf("\nAuthorized fingerprint size: %lu", (unsigned long)self._fingerprints.count);
+	self.log = [self.log stringByAppendingString:[NSString stringWithFormat:@"\nAuthorized fingerprint size: %lu", (unsigned long)self._fingerprints.count]];
+    
+    for (int i = 0; i < certCount; i++){
 		if ([self._fingerprintType isEqual: @"SHA1"]) connFingerprint = [self getSHA1Fingerprint: SecTrustGetCertificateAtIndex(serverCert, i)];
 		else connFingerprint = [self getSHA256Fingerprint: SecTrustGetCertificateAtIndex(serverCert, i)];
-        printf("\n%s", [connFingerprint UTF8String]);
-        printf("\nlista finger: %lu", (unsigned long)self._fingerprints.count);
+        
+        printf("\n Found fingerprint: %s", [connFingerprint UTF8String]);
+        self.log = [self.log stringByAppendingString:[NSString stringWithFormat:@"\n Found fingerprint: %s", [connFingerprint UTF8String]]];
+
+        printf("\n Compare with:");
+        self.log = [self.log stringByAppendingString:[NSString stringWithFormat:@"\n Compare with:"]];
 
         self._allFingerprints = [self._allFingerprints stringByAppendingString:connFingerprint];
         self._allFingerprints = [self._allFingerprints stringByAppendingString:@","];
         
         for (int j = 0; j < self._fingerprints.count; j++){
-            printf("\n%s", [[self._fingerprints objectAtIndex: j] UTF8String] );
-			if ([connFingerprint caseInsensitiveCompare: [self._fingerprints objectAtIndex: j]] == NSOrderedSame){
+            
+            printf("\n   %s", [[self._fingerprints objectAtIndex: j] UTF8String] );
+            self.log = [self.log stringByAppendingString:[NSString stringWithFormat:@"\n   %s", [[self._fingerprints objectAtIndex: j] UTF8String]]];
+
+            
+            if ([connFingerprint caseInsensitiveCompare: [self._fingerprints objectAtIndex: j]] == NSOrderedSame){
 				isValid = true;
 				break;
 			}
@@ -62,6 +103,7 @@
 		if (isValid) break;
 	}
     printf("\n");
+    
     self._foundFingerprint = connFingerprint;
     //NSLog(@"Found fingerprint for %@ %@: %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host, connFingerprint);
 
@@ -84,8 +126,11 @@
                                          resultWithStatus    : CDVCommandStatus_ERROR
                                          messageAsDictionary : jsonObj
                                          ];
-
         
+        printf("self.log error");
+        printf("\n%s", [self.log UTF8String]);
+        [self WriteToStringFile : self.log];
+
 		// CDVPluginResult *rslt = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"INVALID_CERT"];
         
 		[self._plugin.commandDelegate sendPluginResult: rslt callbackId: self._callbackId];
@@ -184,6 +229,10 @@
                              self._allFingerprints, @"all_fingerprints",
                              nil
                              ];
+    
+    printf("self.log ok\n");
+    printf("%s", [self.log UTF8String]);
+    [self WriteToStringFile : self.log];
     
     CDVPluginResult *pluginResult = [ CDVPluginResult
                                      resultWithStatus    : CDVCommandStatus_OK
@@ -371,5 +420,6 @@
 /*- (NSString*) getMultipart: (NSDictionary)d{
     NSMutableString *resultStr =
 }*/
+
 
 @end
