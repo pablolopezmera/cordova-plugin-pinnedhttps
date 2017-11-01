@@ -96,6 +96,7 @@
 
             
             if ([connFingerprint caseInsensitiveCompare: [self._fingerprints objectAtIndex: j]] == NSOrderedSame){
+                self.log = [self.log stringByAppendingString:[NSString stringWithFormat:@"\n     fingerprint matched: %s=%s", [connFingerprint UTF8String], [[self._fingerprints objectAtIndex: j] UTF8String]]];
 				isValid = true;
 				break;
 			}
@@ -108,12 +109,13 @@
     //NSLog(@"Found fingerprint for %@ %@: %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host, connFingerprint);
 
 	if (isValid){
+        self.log = [self.log stringByAppendingString:[NSString stringWithFormat:@"\nisvalid is true"]];
 		self.validFingerprint = true;
 		//NSLog(@"Valid cert for %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL.host);
 		NSURLCredential *cred = [NSURLCredential credentialForTrust: serverCert];
 		[[challenge sender] useCredential: cred forAuthenticationChallenge: challenge];
 	} else {
-        
+        self.log = [self.log stringByAppendingString:[NSString stringWithFormat:@"\nisvalid is false, should return error"]];
         NSDictionary *jsonObj = [ [NSDictionary alloc]
                                  initWithObjectsAndKeys :
                                  @"INVALID_CERT", @"error",
@@ -232,6 +234,7 @@
     
     printf("self.log ok\n");
     printf("%s", [self.log UTF8String]);
+    self.log = [self.log stringByAppendingString:[NSString stringWithFormat:@"\nBefore return OK"]];
     [self WriteToStringFile : self.log];
     
     CDVPluginResult *pluginResult = [ CDVPluginResult
